@@ -62,6 +62,7 @@ def make_input_guardrail(deps: AgentDeps):
             "outputs_this_turn": [], "warnings": [], "errors": [], "final_response": "",
             "agent_scratch": clear_scratch(), "revision_feedback": "", "quality_target": "",
             "revision_count": 0, "pending_formats": [], "next_after_research": "",
+            "route": "",  # a blocked turn sets route="blocked"; without this reset the next allowed turn ends too
         }
         if not state.get("brand"):
             update["brand"] = BrandProfile().model_dump()
@@ -110,7 +111,8 @@ def make_quality_gate(deps: AgentDeps):
         warnings = []
         if not report.passed:
             reason = "budget limit reached" if over_budget else f"after {revisions} revision(s)"
-            warnings.append(f"{LABELS.get(target, target).capitalize()} scored {report.overall:.0f}/100 ({reason}); "
+            label = LABELS.get(target, target)
+            warnings.append(f"{label[:1].upper() + label[1:]} scored {report.overall:.0f}/100 ({reason}); "
                             "see the Content Dashboard for improvement suggestions.")
         pending = advance_pending(state, target)
         if over_budget and pending:
