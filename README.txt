@@ -105,7 +105,7 @@ A cost and quality comparison is in [docs/service_comparison.md](docs/service_co
 
 ### Prerequisites
 - Python **3.11–3.14** (developed and tested on 3.14.6; Docker image uses 3.12)
-- An **OpenAI API key** (required). For research: **SerpAPI** (free 100/month), and optionally **Tavily**
+- An **OpenAI API key** (required). For research: **SerpAPI** (free plan 250 searches/month; Starter $25 for 1,000), and optionally **Tavily**
   (free 1,000/month) and/or **Perplexity**.
 
 ### Install
@@ -270,7 +270,7 @@ Step-by-step instructions: [docs/deployment_guide.md](docs/deployment_guide.md).
 | Yellow banner "OPENAI_API_KEY is not set" | Copy `.env.example` to `.env`, add the key, and restart Streamlit |
 | Report says *"Based on AI model knowledge — not verified"* | No research key, or every provider failed. Add `SERPAPI_API_KEY` or `TAVILY_API_KEY`; check the warnings (they list each provider's error) |
 | Settings shows "🔑 ANTHROPIC_API_KEY doesn't look like a valid key", or `401 invalid x-api-key` with `LLM_PROVIDER=anthropic` | A key from another provider was pasted into that slot (for example an OpenAI `sk-proj-` key). Anthropic keys start with `sk-ant-`; create the right key and restart |
-| `serpapi: HTTP 401` / `Invalid API key` in warnings | The SerpAPI key is wrong or out of credits (100/month free). Tavily and Perplexity take over automatically |
+| `serpapi: HTTP 401` / `Invalid API key` in warnings | The SerpAPI key is wrong or out of searches (the free plan has 250 a month). Tavily and Perplexity take over automatically |
 | Image warning "fallback used → gpt-image-1-mini" | gpt-image-1 needs a verified OpenAI organization. gpt-image-1-mini is the expected default otherwise |
 | Image shows "placeholder" | Every OpenAI image model failed (key, billing, or content policy). See `attempts` in the Images tab |
 | "scored 62/100 after 2 revision(s)" | The quality gate kept the best effort. Open the Content Dashboard for suggestions, edit, and re-score |
@@ -296,7 +296,7 @@ Step-by-step instructions: [docs/deployment_guide.md](docs/deployment_guide.md).
 - **Reuse**: follow-ups reuse thread research (no new searches); refine mode skips the tools.
 - **Visibility**: tokens, searches, images, cache hits and estimated USD are shown per request (sidebar and Settings),
   and logged as JSON in production. Prices are configured in `config/services.yaml`; verify them against current provider pricing.
-- **Free tiers first**: SerpAPI (100/month) is the primary provider and Tavily (1,000/month) the fallback. Perplexity is only used for deep research or as a last resort.
+- **Free tiers first**: SerpAPI (free plan 250/month; the cost tracker uses the Starter plan's $0.025 a search, editable in `config/services.yaml`) is the primary provider and Tavily (1,000/month) the fallback. Perplexity is only used for deep research or as a last resort.
 - **Image cost**: `quality: medium` (~$0.063 gpt-image-1, ~$0.015 mini); put `gpt-image-1-mini` first in the chain for drafts. The placeholder costs nothing. Generate images only when you ask for them, or as part of a campaign.
 
 ---

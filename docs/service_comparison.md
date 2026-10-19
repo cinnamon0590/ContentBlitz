@@ -13,7 +13,7 @@ the fallback chains, and gives recommendations by budget.
 | | **SerpAPI** (primary) | **Tavily** (fallback 1) | **Perplexity Agent API** (fallback 2 / deep research) |
 |---|---|---|---|
 | What it returns | Raw Google results: organic links, answer box, **related searches**, **People also ask** | Search results with extracted page content; optional synthesized answer (`advanced`) | An LLM-synthesized answer with citations (`search_results` + `message` output items; `/v1/agent`, preset `fast`) |
-| Free tier | ~100 searches/month | ~1,000 credits/month | Paid (~$0.002 per `fast` call, measured) |
+| Free tier | 250 searches/month (Starter plan: $25 for 1,000) | ~1,000 credits/month | Paid (~$0.002 per `fast` call, measured) |
 | Control over sources | Highest: we choose and cite | High | Lower: the provider pre-selects and pre-analyzes |
 | SEO value | **Best**: related searches and PAA feed the keyword tool and the FAQ sections | Medium | Low |
 | Synthesis | None (our LLM synthesizes) | Basic answer | Strong (saves an LLM call) |
@@ -101,7 +101,7 @@ cold latency is higher, about 0.9 s and 2.4 s on the first run):
 
 | Provider | median latency (s) | avg results | unique domains | errors | cost / call (USD) |
 |---|---|---|---|---|---|
-| serpapi | 0.88 (cold) | 5 | 13 | 0 | 0 (free tier) |
+| serpapi | 0.88 (cold) | 5 | 13 | 0 | 0 on the free plan; 0.025 on Starter |
 | tavily | 2.39 (cold) | 5 | 13 | 0 | 0 (free tier) |
 | perplexity | 6.16 | 13.3 | 30 | 0 | 0.002 |
 

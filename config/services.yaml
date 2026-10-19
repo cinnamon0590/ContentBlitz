@@ -53,7 +53,7 @@ image_pricing:          # USD per image (approx.)
   gpt-image-1-mini: 0.015       # medium, 1536x1024
   gemini-2.5-flash-image: 0.039 # ~1290 output tokens at $30 / 1M
   placeholder: 0.0
-search_pricing:         # USD per call (approx.; free tiers first)
-  serpapi: 0.0
+search_pricing:         # USD per call (approx.)
+  serpapi: 0.025                # Starter plan: $25 / 1,000 searches. Set 0.0 on the free plan (250 a month)
   tavily: 0.0
   perplexity: 0.002             # fast preset, measured
