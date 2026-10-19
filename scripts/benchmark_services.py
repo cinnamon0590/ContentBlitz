@@ -42,7 +42,7 @@ QUERIES = [
 def bench_research(config, queries: list[str]) -> list[dict]:
     s = config.secrets
     providers = [SerpAPIClient(s.serpapi_api_key), TavilyClient(s.tavily_api_key),
-                 PerplexityClient(s.perplexity_api_key, config.research.get("perplexity_model", "sonar-pro"))]
+                 PerplexityClient(s.perplexity_api_key, config.research.get("perplexity_preset", "fast"))]
     rows = []
     for provider in providers:
         if not provider.available:
@@ -89,7 +89,7 @@ def bench_llm(config) -> list[dict]:
 
 
 def bench_images(config) -> list[dict]:
-    client = OpenAIImageClient(config.secrets.openai_api_key)
+    client = OpenAIImageClient(config.secrets.openai_api_key, quality=config.images.get("quality", "medium"))
     rows = []
     for model in [m for m in config.images.get("chain", []) if m != "placeholder"]:
         if not client.available:

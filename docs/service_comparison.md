@@ -10,10 +10,10 @@ the fallback chains, and gives recommendations by budget.
 
 ## 1. Research providers
 
-| | **SerpAPI** (primary) | **Tavily** (fallback 1) | **Perplexity Sonar** (fallback 2 / deep research) |
+| | **SerpAPI** (primary) | **Tavily** (fallback 1) | **Perplexity Agent API** (fallback 2 / deep research) |
 |---|---|---|---|
-| What it returns | Raw Google results: organic links, answer box, **related searches**, **People also ask** | Search results with extracted page content; optional synthesized answer (`advanced`) | An LLM-synthesized answer with citations (`search_results` / `citations`) |
-| Free tier | ~100 searches/month | ~1,000 credits/month | Paid (per request + tokens) |
+| What it returns | Raw Google results: organic links, answer box, **related searches**, **People also ask** | Search results with extracted page content; optional synthesized answer (`advanced`) | An LLM-synthesized answer with citations (`search_results` + `message` output items; `/v1/agent`, preset `fast`) |
+| Free tier | ~100 searches/month | ~1,000 credits/month | Paid (~$0.002 per `fast` call, measured) |
 | Control over sources | Highest: we choose and cite | High | Lower: the provider pre-selects and pre-analyzes |
 | SEO value | **Best**: related searches and PAA feed the keyword tool and the FAQ sections | Medium | Low |
 | Synthesis | None (our LLM synthesizes) | Basic answer | Strong (saves an LLM call) |
@@ -38,16 +38,21 @@ tokens and estimated cost per request.
 
 ## 3. Image models
 
-| | **gpt-image-1** | **DALL-E 3** | **DALL-E 2** | Pillow placeholder |
-|---|---|---|---|---|
-| Quality / prompt adherence | Highest | High | Moderate | Branded gradient card |
-| Requirements | **Verified OpenAI organization** | Standard key | Standard key | None |
-| Sizes used | 1536×1024 | 1792×1024 | 1024×1024 | 1536×1024 |
-| Approx. cost / image | ~$0.04–0.17 by quality (tracked as 0.063) | ~$0.08 (standard landscape) | ~$0.02 | $0 |
-| Role | Primary | Fallback 1 (the default when the org is unverified) | Fallback 2 | Final fallback (never fails) |
+| | **gpt-image-1** | **gpt-image-1-mini** | Pillow placeholder |
+|---|---|---|---|
+| Quality / prompt adherence | Highest | Good (draft quality) | Branded gradient card |
+| Requirements | **Verified OpenAI organization** | Standard key | None |
+| Sizes used | 1536×1024 | 1536×1024 | 1536×1024 |
+| Approx. cost / image (`quality: medium`) | ~$0.063 | ~$0.015 | $0 |
+| Role | Primary | Fallback (the default when the org is unverified) | Final fallback (never fails) |
 
-Alternatives worth adding (the interface is `client.generate(model, prompt, size) -> bytes`): Stability AI
-(SDXL / SD3) for open-model control, Google Imagen, Midjourney (no official API; Discord-based).
+DALL-E 2 and DALL-E 3 have been retired by OpenAI (the API returns "model does not exist"), so they were removed
+from the chain. Quality is pinned to `medium` in `config/services.yaml`: the API default is `high`, which costs
+about four times as much. Newer OpenAI models (`gpt-image-1.5`, `gpt-image-2`) can be put at the top of the chain.
+
+All live models above are OpenAI, so an OpenAI outage leaves only the placeholder. Alternatives worth adding for
+provider redundancy (the interface is `client.generate(model, prompt, size) -> bytes`): Google Imagen / Gemini
+image models, Stability AI (SDXL / SD3) for open-model control, Midjourney (no official API; Discord-based).
 
 ## 4. Cost-benefit summary per request (illustrative)
 
@@ -58,7 +63,7 @@ The estimates assume typical prompt sizes. Measure your own with the usage panel
 | Research report | 2–4 searches (free tier), 1 synthesis + 1 report on the smart tier | Cache hits are free; skip `deep_research` |
 | SEO blog | Research + keyword lookup + 1 long smart generation (+ up to 2 revisions) | Lower `max_revisions`, raise or lower `pass_threshold`, reuse thread research |
 | LinkedIn post | Research (or reuse) + 1 smart generation | Write it as a follow-up to existing research |
-| Image | 1 image call + 1 fast prompt call | DALL-E 2 for drafts; placeholder for layout tests |
+| Image | 1 image call + 1 fast prompt call | gpt-image-1-mini for drafts; placeholder for layout tests |
 | Campaign | All of the above, sharing one research pass | Already optimized: research once, write three times |
 
 ## 5. Measured benchmarks
@@ -74,19 +79,32 @@ The script reports, for each research provider: median latency, average result c
 and error count. For each LLM tier it reports latency, tokens and cost; for each image model, latency, output
 size and cost. Raw JSON is saved to `outputs/benchmarks/`.
 
-| Provider | median latency (s) | avg results | unique domains | errors |
-|---|---|---|---|---|
-| serpapi | _run script_ | | | |
-| tavily | _run script_ | | | |
-| perplexity | _run script_ | | | |
+Measured 2026-10-19 (3 queries per provider; SerpAPI/Tavily figures are from a warm 30-minute cache, so their
+cold latency is higher, about 0.9 s and 2.4 s on the first run):
+
+| Provider | median latency (s) | avg results | unique domains | errors | cost / call (USD) |
+|---|---|---|---|---|---|
+| serpapi | 0.88 (cold) | 5 | 13 | 0 | 0 (free tier) |
+| tavily | 2.39 (cold) | 5 | 13 | 0 | 0 (free tier) |
+| perplexity | 6.16 | 13.3 | 30 | 0 | 0.002 |
+
+| LLM tier | model | latency (s) | cost (USD, short probe) |
+|---|---|---|---|
+| fast | gpt-4o-mini | 1.65–2.03 | 0.00003 |
+| smart | gpt-4o | 0.91 | 0.0006 |
+
+| Image model | latency (s) | size | cost (USD) |
+|---|---|---|---|
+| gpt-image-1 | 29.8–82.5 | 1536×1024 | 0.063 |
+| gpt-image-1-mini | 15.6 | 1536×1024 | 0.015 |
 
 ## 6. Recommendations
 
 | Situation | Recommended configuration |
 |---|---|
-| **Student / free tier** | OpenAI (program key) + SerpAPI free + Tavily free; images on DALL-E 3 (or DALL-E 2 for drafts); `request_budget_usd: 0.25` |
+| **Student / free tier** | OpenAI (program key) + SerpAPI free + Tavily free; images on gpt-image-1-mini; `request_budget_usd: 0.25` |
 | **Small business, quality-first** | gpt-4o smart tier, SerpAPI paid, Perplexity for deep research, gpt-image-1 (verified org), `pass_threshold: 75` |
-| **Lowest cost** | `smart: gpt-4o-mini`, Tavily only, DALL-E 2, `max_revisions: 0`, longer cache TTL |
+| **Lowest cost** | `smart: gpt-4o-mini`, Tavily only, gpt-image-1-mini first, `max_revisions: 0`, longer cache TTL |
 | **Provider outage resilience** | Keep at least two research keys configured; leave the placeholder at the end of the image chain |
 | **Strong long-form voice** | Try `LLM_PROVIDER=anthropic` for the writers; compare drafts in the Content Dashboard |
 | **Privacy-sensitive** | Keep moderation on, and keep PII redaction (always on); consider self-hosted models via a custom `create_chat_model` branch |

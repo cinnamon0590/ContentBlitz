@@ -87,7 +87,7 @@ Shared helpers (`src/agents/__init__.py`): `AgentDeps`, `TurnBudget`, `tool_loop
 | `openai_client.ModerationClient(api_key, enabled)` | `.check(text) -> (flagged, categories)`; fails open |
 | `serp_client.SerpAPIClient(api_key)` | `.search(q, num) -> (sources, answer)`, `.keyword_ideas(q)` |
 | `tavily_client.TavilyClient(api_key)` | `.search(q, num, depth="basic"/"advanced")` |
-| `perplexity_client.PerplexityClient(api_key, model="sonar-pro")` | `.search(q)` → cited answer plus sources |
+| `perplexity_client.PerplexityClient(api_key, preset="fast")` | `.search(q)` → cited answer plus sources |
 | `serp_client.SearchChain(providers, cache, tracker, keyword_provider)` | `.search(q, num, depth, order) -> SearchOutcome`, `.keyword_ideas(q)`, `.available_providers` |
 | `image_clients.OpenAIImageClient(api_key)` | `.generate(model, prompt, size) -> bytes` |
 | `image_clients.ImageChain(client, chain, sizes, tracker)` | `.generate(prompt, title, palette, brand) -> ImageResult` |

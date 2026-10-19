@@ -37,7 +37,7 @@ API goes down.
 | **Research with citations** | Several strategic queries; SerpAPI → Tavily → Perplexity; numbered `[n]` citations to real URLs; every output carries a **Sources & Provenance** section |
 | **SEO blogs** | One H1, H2/H3 structure, 1–2% keyword density, 150–160 character meta description, slug, FAQ (People-also-ask), CTA, internal-link ideas, Flesch readability |
 | **LinkedIn posts** | 1300–1600 characters, hook → story → CTA, 8–12 hashtags, mobile line breaks, sources in a suggested first comment |
-| **Images** | Art-director prompt enhancement with brand palette; gpt-image-1 → DALL-E 3 → DALL-E 2 → branded placeholder; Pillow validation; PNG + metadata |
+| **Images** | Art-director prompt enhancement with brand palette; gpt-image-1 → gpt-image-1-mini → branded placeholder; Pillow validation; PNG + metadata |
 | **Quality pipeline** | Deterministic scoring (SEO, structure, readability, citations, brand voice), with automatic revision loops and suggestions |
 | **Brand voice** | One brand profile across all formats, rule-based checks, and **learn-from-sample** |
 | **Templates** | Blog: how-to/listicle/comparison/thought leadership · LinkedIn: insights/story/tips/announcement · Reports: trend/market/competitive |
@@ -83,8 +83,8 @@ Diagrams (Mermaid) are in [docs/architecture.md](docs/architecture.md). Design t
 |---|---|---|---|
 | Orchestration | **LangGraph 1.x** | Explicit state machine, conditional edges, ToolNode loops, built-in checkpointers, Studio | CrewAI, AutoGen, Semantic Kernel |
 | LLM | **OpenAI gpt-4o / gpt-4o-mini** | Provided by the program; strong structured output; the cheap tier keeps routing and scoring inexpensive | Claude Sonnet / Haiku, Gemini Pro / Flash via `LLM_PROVIDER` |
-| Research | **SerpAPI** (primary) | Real Google results plus related searches and People-also-ask for SEO | **Tavily** (fallback 1), **Perplexity Sonar** (fallback 2 and deep research) |
-| Images | **gpt-image-1** | Best quality and prompt adherence | DALL-E 3 → DALL-E 2 → Pillow placeholder (Stability AI pluggable) |
+| Research | **SerpAPI** (primary) | Real Google results plus related searches and People-also-ask for SEO | **Tavily** (fallback 1), **Perplexity Agent API** (fallback 2 and deep research) |
+| Images | **gpt-image-1** | Best quality and prompt adherence | gpt-image-1-mini → Pillow placeholder (Stability AI / Google pluggable) |
 | Content optimization | **Custom rules + LLM prompts** | Deterministic, explainable, free | Jasper, Copy.ai, Writesonic |
 | UI | **Streamlit** | Fastest route to a multi-tab, data-rich interface | Gradio, React, Flask |
 | State / memory | **LangGraph InMemorySaver / SqliteSaver** | Zero-ops in dev, durable in prod | Postgres saver, Redis |
@@ -257,7 +257,7 @@ Step-by-step instructions: [docs/deployment_guide.md](docs/deployment_guide.md).
 | Yellow banner "OPENAI_API_KEY is not set" | Copy `.env.example` to `.env`, add the key, and restart Streamlit |
 | Report says *"Based on AI model knowledge — not verified"* | No research key, or every provider failed. Add `SERPAPI_API_KEY` or `TAVILY_API_KEY`; check the warnings (they list each provider's error) |
 | `serpapi: HTTP 401` / `Invalid API key` in warnings | The SerpAPI key is wrong or out of credits (100/month free). Tavily and Perplexity take over automatically |
-| Image warning "fallback used → dall-e-3" | gpt-image-1 needs a verified OpenAI organization. DALL-E 3 is the expected default otherwise |
+| Image warning "fallback used → gpt-image-1-mini" | gpt-image-1 needs a verified OpenAI organization. gpt-image-1-mini is the expected default otherwise |
 | Image shows "placeholder" | Every OpenAI image model failed (key, billing, or content policy). See `attempts` in the Images tab |
 | "scored 62/100 after 2 revision(s)" | The quality gate kept the best effort. Open the Content Dashboard for suggestions, edit, and re-score |
 | "Per-request budget reached" | Raise `guardrails.request_budget_usd` in the config, or request fewer formats at once |
@@ -283,7 +283,7 @@ Step-by-step instructions: [docs/deployment_guide.md](docs/deployment_guide.md).
 - **Visibility**: tokens, searches, images, cache hits and estimated USD are shown per request (sidebar and Settings),
   and logged as JSON in production. Prices are configured in `config/services.yaml`; verify them against current provider pricing.
 - **Free tiers first**: SerpAPI (100/month) is the primary provider and Tavily (1,000/month) the fallback. Perplexity is only used for deep research or as a last resort.
-- **Image cost**: DALL-E 3 standard quality; the placeholder costs nothing. Generate images only when you ask for them, or as part of a campaign.
+- **Image cost**: `quality: medium` (~$0.063 gpt-image-1, ~$0.015 mini); put `gpt-image-1-mini` first in the chain for drafts. The placeholder costs nothing. Generate images only when you ask for them, or as part of a campaign.
 
 ---
 

@@ -14,8 +14,8 @@ from src.integrations.image_clients import (
 from src.utils.observability import CostTracker
 from tests.conftest import FakeImageClient
 
-SIZES = {"gpt-image-1": "1536x1024", "dall-e-3": "1792x1024", "dall-e-2": "1024x1024"}
-CHAIN = ["gpt-image-1", "dall-e-3", "dall-e-2", "placeholder"]
+SIZES = {"gpt-image-1": "1536x1024", "gpt-image-1-mini": "1536x1024"}
+CHAIN = ["gpt-image-1", "gpt-image-1-mini", "placeholder"]
 
 
 def test_primary_success():
@@ -25,24 +25,22 @@ def test_primary_success():
     assert tracker.images == {"gpt-image-1": 1}
 
 
-def test_falls_back_to_dalle3_then_dalle2():
+def test_falls_back_to_mini():
     client = FakeImageClient(fail_models={"gpt-image-1"})
-    assert ImageChain(client, CHAIN, SIZES).generate("x").provider == "dall-e-3"
-    client = FakeImageClient(fail_models={"gpt-image-1", "dall-e-3"})
     result = ImageChain(client, CHAIN, SIZES).generate("x")
-    assert result.provider == "dall-e-2" and len(result.attempts) == 2
+    assert result.provider == "gpt-image-1-mini" and len(result.attempts) == 1
 
 
 def test_placeholder_when_everything_fails():
-    client = FakeImageClient(fail_models={"gpt-image-1", "dall-e-3", "dall-e-2"})
+    client = FakeImageClient(fail_models={"gpt-image-1", "gpt-image-1-mini"})
     result = ImageChain(client, CHAIN, SIZES).generate("x", title="Coffee Trends 2026", brand="Bean Co")
-    assert result.provider == "placeholder" and len(result.attempts) == 3
+    assert result.provider == "placeholder" and len(result.attempts) == 2
     assert Image.open(io.BytesIO(result.png_bytes)).format == "PNG"
 
 
 def test_chain_without_placeholder_raises():
     with pytest.raises(ImageGenerationError):
-        ImageChain(FakeImageClient({"dall-e-2"}), ["dall-e-2"], SIZES).generate("x")
+        ImageChain(FakeImageClient({"gpt-image-1"}), ["gpt-image-1"], SIZES).generate("x")
 
 
 def test_validate_rejects_small_and_garbage():
@@ -88,11 +86,11 @@ class _SDK:
 def test_openai_image_client_params():
     sdk = _SDK()
     client = OpenAIImageClient("k", client=sdk)
-    assert client.generate("dall-e-2", "p" * 2000, "1024x1024")
-    assert sdk.images.kwargs["response_format"] == "b64_json" and len(sdk.images.kwargs["prompt"]) == 1000
-    client.generate("gpt-image-1", "p", "1536x1024")
-    assert "response_format" not in sdk.images.kwargs
-    client.generate("dall-e-3", "p", "1792x1024")
-    assert sdk.images.kwargs["quality"] == "standard"
+    assert client.generate("gpt-image-1", "p" * 40000, "1536x1024")
+    kwargs = sdk.images.kwargs
+    assert kwargs["quality"] == "medium" and len(kwargs["prompt"]) == 32000 and "response_format" not in kwargs
+    OpenAIImageClient("k", client=sdk, quality=None).generate("gpt-image-1-mini", "p", "1536x1024")
+    assert "quality" not in sdk.images.kwargs
     with pytest.raises(ImageGenerationError):
-        OpenAIImageClient(None).generate("dall-e-2", "p", "1024x1024")
+        OpenAIImageClient(None).generate("gpt-image-1", "p", "1536x1024")
+

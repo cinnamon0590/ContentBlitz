@@ -77,7 +77,7 @@ class AgentDeps:
             "serpapi": serp,
             "tavily": TavilyClient(secrets.tavily_api_key, timeout=timeout),
             "perplexity": PerplexityClient(secrets.perplexity_api_key,
-                                           model=config.research.get("perplexity_model", "sonar-pro")),
+                                           preset=config.research.get("perplexity_preset", "fast")),
         }
         chain = [providers[name] for name in config.research.get("chain", providers) if name in providers]
         cache = TTLCache(config.resolve_path(config.cache.dir), config.cache.ttl_seconds, config.cache.enabled)
@@ -86,7 +86,8 @@ class AgentDeps:
             config=config,
             llm=llm,
             search=SearchChain(chain, cache=cache, tracker=tracker, keyword_provider=serp),
-            images=ImageChain(OpenAIImageClient(secrets.openai_api_key), config.images.get("chain", []),
+            images=ImageChain(OpenAIImageClient(secrets.openai_api_key, quality=config.images.get("quality", "medium")),
+                              config.images.get("chain", []),
                               config.images.get("sizes", {}), tracker,
                               config.images.get("min_dimension_px", 256)),
             validator=QualityValidator(config.quality.pass_threshold, llm=llm, critique_prompt=QUALITY_CRITIC),

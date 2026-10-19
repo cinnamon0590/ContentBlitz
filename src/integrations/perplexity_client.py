@@ -1,4 +1,7 @@
-"""Perplexity Sonar client: research + analysis in one call, with citations.
+"""Perplexity Agent API client: research + analysis in one call, with citations.
+
+Perplexity replaced the Sonar chat-completions endpoint with the Agent API
+(``POST /v1/agent``, ``preset`` + ``input``). ``sonar-pro`` maps to the ``fast`` preset.
 
 It's used for the expensive ``deep_research`` tool (at most once per request) and as
 the last live provider in the research fallback chain.
@@ -11,16 +14,16 @@ import requests
 from src.integrations import ProviderError, request_json
 from src.workflow.state_management import Source
 
-PERPLEXITY_URL = "https://api.perplexity.ai/chat/completions"
+PERPLEXITY_URL = "https://api.perplexity.ai/v1/agent"
 
 
 class PerplexityClient:
     name = "perplexity"
 
-    def __init__(self, api_key: str | None, model: str = "sonar-pro", timeout: float = 45,
+    def __init__(self, api_key: str | None, preset: str = "fast", timeout: float = 45,
                  session: requests.Session | None = None):
         self.api_key = api_key
-        self.model = model
+        self.preset = preset
         self.timeout = timeout
         self.session = session or requests.Session()
 
@@ -40,24 +43,21 @@ class PerplexityClient:
             timeout=self.timeout,
             headers={"Authorization": f"Bearer {self.api_key}"},
             json={
-                "model": self.model,
-                "messages": [
-                    {"role": "system", "content": "You are a meticulous research analyst. Cite sources."},
-                    {"role": "user", "content": query},
-                ],
+                "preset": self.preset,
+                "instructions": "You are a meticulous research analyst. Cite sources.",
+                "input": query,
             },
         )
         answer = ""
-        choices = data.get("choices") or []
-        if choices:
-            answer = choices[0].get("message", {}).get("content", "")
-
         sources: list[Source] = []
-        for item in data.get("search_results") or []:
-            if item.get("url"):
-                sources.append(Source(title=item.get("title", ""), url=item["url"],
-                                      snippet=(item.get("snippet") or "")[:500], provider=self.name))
-        if not sources:  # older response shape: a bare list of citation URLs
-            sources = [Source(url=url, provider=self.name) for url in data.get("citations") or [] if url]
+        for item in data.get("output") or []:
+            if item.get("type") == "search_results":
+                for result in item.get("results") or []:
+                    if result.get("url"):
+                        sources.append(Source(title=result.get("title", ""), url=result["url"],
+                                              snippet=(result.get("snippet") or "")[:500], provider=self.name))
+            elif item.get("type") == "message":
+                answer += "".join(part.get("text", "") for part in item.get("content") or []
+                                  if part.get("type") == "output_text")
         # Perplexity decides how many sources to use; ``num`` is only a lower bound for callers.
         return sources, answer

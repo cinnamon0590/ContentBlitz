@@ -40,8 +40,8 @@ caller ──▶ Chain.search()/generate()
 
 - **LLM**: `LLMService.invoke` tries the primary model, then the fallback models. `structured()` tries native function
   calling, then JSON-mode parsing, then returns `None` so the agent can use its deterministic fallback.
-- **Images**: `ImageChain` handles each model's quirks (gpt-image-1 returns base64; DALL-E 2 limits prompts to 1000
-  characters; size sets differ per model) and always ends with a Pillow placeholder.
+- **Images**: `ImageChain` handles each model's quirks (the gpt-image family returns base64; quality is pinned to
+  `medium`; sizes are configured per model) and always ends with a Pillow placeholder.
 - **Moderation**: fails *open* with a logged warning, so a moderation outage never takes the product down.
   The regex guardrails still apply.
 

@@ -84,14 +84,16 @@ def test_tavily_parsing():
         TavilyClient(None).search("q")
 
 
-def test_perplexity_parsing_both_shapes():
-    new_shape = {"choices": [{"message": {"content": "Answer [1]"}}],
-                 "search_results": [{"title": "P", "url": "https://p.com", "snippet": "s"}]}
-    sources, answer = PerplexityClient("k", session=fake_session(new_shape)).search("q")
-    assert answer == "Answer [1]" and sources[0].title == "P"
-    old_shape = {"choices": [{"message": {"content": "x"}}], "citations": ["https://c.com"]}
-    sources, _ = PerplexityClient("k", session=fake_session(old_shape)).search("q")
-    assert sources[0].url == "https://c.com"
+def test_perplexity_agent_api_parsing():
+    payload = {"output": [
+        {"type": "search_results", "results": [{"id": 1, "title": "P", "url": "https://p.com", "snippet": "s"},
+                                                {"id": 2, "title": "no url"}]},
+        {"type": "message", "content": [{"type": "output_text", "text": "Answer [1]"}]},
+    ]}
+    session = fake_session(payload)
+    sources, answer = PerplexityClient("k", session=session).search("q")
+    assert answer == "Answer [1]" and [s.title for s in sources] == ["P"]
+    assert PerplexityClient("k", session=fake_session({})).search("q") == ([], "")
     with pytest.raises(ProviderError):
         PerplexityClient(None).search("q")
 

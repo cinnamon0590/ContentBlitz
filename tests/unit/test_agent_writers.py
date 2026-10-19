@@ -114,17 +114,17 @@ def test_image_generator_primary(make_deps):
 def test_image_generator_fallback_chain_and_enhancer_failure(make_deps):
     roles = default_roles()
     roles["image_prompt_enhancer"] = "nope"
-    deps = make_deps(roles, image_fail={"gpt-image-1", "dall-e-3"})
+    deps = make_deps(roles, image_fail={"gpt-image-1"})
     out = make_image_generator(deps)({"request": {"intent": "image", "topic": "bakery"},
                                       "blog": {"title": "Bakery Emails"}})
     asset = ImageAsset.model_validate(out["image"])
-    assert asset.provider == "dall-e-2" and len(asset.attempts) == 2
+    assert asset.provider == "gpt-image-1-mini" and len(asset.attempts) == 1
     assert any("fallback" in w.lower() for w in out["warnings"])
     assert any("Fallback attempt failed" in n for n in asset.provenance.notes)
 
 
 def test_image_generator_placeholder_and_moderation(make_deps):
-    deps = make_deps(image_fail={"gpt-image-1", "dall-e-3", "dall-e-2"})
+    deps = make_deps(image_fail={"gpt-image-1", "gpt-image-1-mini"})
     out = make_image_generator(deps)({"request": {"intent": "image", "topic": "bakery"}})
     assert out["image"]["provider"] == "placeholder"
 
@@ -139,8 +139,8 @@ def test_image_generator_placeholder_and_moderation(make_deps):
 
 def test_image_chain_exhausted(make_deps):
     deps = make_deps()
-    deps.images.chain = ["dall-e-2"]
-    deps.images.client.fail_models = {"dall-e-2"}
+    deps.images.chain = ["gpt-image-1"]
+    deps.images.client.fail_models = {"gpt-image-1"}
     out = make_image_generator(deps)({"request": {"intent": "image", "topic": "x"}})
     assert "Image generation failed" in out["warnings"][0]
 

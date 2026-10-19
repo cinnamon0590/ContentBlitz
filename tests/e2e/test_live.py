@@ -6,9 +6,13 @@
 import os
 
 import pytest
+from dotenv import load_dotenv
 
-from src.core.config import load_config
+from src.core.config import PROJECT_ROOT, load_config
 from src.core.workflow import ContentBlitz
+
+# skipif conditions run at import time, before load_config() reads .env
+load_dotenv(PROJECT_ROOT / ".env", override=False)
 
 pytestmark = pytest.mark.live
 needs_openai = pytest.mark.skipif(not os.getenv("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")
@@ -53,7 +57,7 @@ def test_live_linkedin_post(app):
 def test_live_image_with_fallback_chain(app):
     result = app.run("Make an image of a cozy coffee shop at sunrise", thread_id="live-3")
     image = result.artifacts["image"]
-    assert image["provider"] in ("gpt-image-1", "dall-e-3", "dall-e-2", "placeholder")
+    assert image["provider"] in ("gpt-image-1", "gpt-image-1-mini", "placeholder")
     assert os.path.exists(image["path"])
 
 

@@ -165,7 +165,7 @@ Follow this outline: {outline}
 """ + GROUNDING_RULES + "\n\n" + BRAND_BLOCK
 
 IMAGE_PROMPT = """ROLE: image_prompt_enhancer
-You are an art director who writes prompts for image models (gpt-image-1 / DALL-E). Turn the user's idea into
+You are an art director who writes prompts for image models (gpt-image family). Turn the user's idea into
 a single detailed prompt for a marketing visual.
 - Describe subject, setting, composition (rule of thirds, negative space for overlay text), lighting, lens or
   medium, mood, and color palette (use the brand colors given).

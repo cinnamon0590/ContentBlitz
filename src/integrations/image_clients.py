@@ -1,9 +1,10 @@
 """Image generation clients and the image fallback chain.
 
-Chain (``config/services.yaml``): ``gpt-image-1 → dall-e-3 → dall-e-2 → placeholder``.
+Chain (``config/services.yaml``): ``gpt-image-1 → gpt-image-1-mini → placeholder``.
 
 * ``gpt-image-1`` needs a verified OpenAI organization. If the key isn't
-  verified, the call fails and the chain moves on to DALL-E 3.
+  verified, the call fails and the chain moves on to ``gpt-image-1-mini``.
+* DALL-E 2/3 are retired by OpenAI and no longer part of the chain.
 * ``placeholder`` is a branded, Pillow-rendered card (never fails), so the
   workflow always returns an image and records why the real providers failed.
 
@@ -25,7 +26,7 @@ from src.utils.observability import CostTracker, get_logger
 
 log = get_logger("images")
 
-PROMPT_LIMITS = {"gpt-image-1": 32000, "dall-e-3": 4000, "dall-e-2": 1000}
+PROMPT_LIMIT = 32000  # gpt-image family
 
 
 class ImageGenerationError(RuntimeError):
@@ -59,10 +60,11 @@ def validate_image(data: bytes, min_dimension: int = 256) -> tuple[bytes, int, i
 
 
 class OpenAIImageClient:
-    """Wraps ``client.images.generate`` for the gpt-image / DALL-E family."""
+    """Wraps ``client.images.generate`` for the gpt-image family."""
 
-    def __init__(self, api_key: str | None, client: Any = None):
+    def __init__(self, api_key: str | None, client: Any = None, quality: str | None = "medium"):
         self.api_key = api_key
+        self.quality = quality
         self._client = client
 
     @property
@@ -79,18 +81,15 @@ class OpenAIImageClient:
     def generate(self, model: str, prompt: str, size: str) -> bytes:
         if not self.available:
             raise ImageGenerationError("OPENAI_API_KEY is not set")
-        prompt = prompt[: PROMPT_LIMITS.get(model, 1000)]
-        kwargs: dict[str, Any] = {"model": model, "prompt": prompt, "size": size, "n": 1}
-        if model.startswith("dall-e"):
-            kwargs["response_format"] = "b64_json"  # gpt-image-1 always returns base64
-        if model == "dall-e-3":
-            kwargs["quality"] = "standard"
+        kwargs: dict[str, Any] = {"model": model, "prompt": prompt[:PROMPT_LIMIT], "size": size, "n": 1}
+        if self.quality:
+            kwargs["quality"] = self.quality
         response = self._get_client().images.generate(**kwargs)
         item = response.data[0]
         if getattr(item, "b64_json", None):
             return base64.b64decode(item.b64_json)
         url = getattr(item, "url", None)
-        if url:  # pragma: no cover - only when a provider ignores response_format
+        if url:  # pragma: no cover - gpt-image models return base64
             import requests
 
             return requests.get(url, timeout=60).content

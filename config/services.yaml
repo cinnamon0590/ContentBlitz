@@ -24,15 +24,15 @@ research:
   chain: [serpapi, tavily, perplexity]   # tried in order; first success wins
   results_per_query: 5
   max_queries: 4
-  perplexity_model: sonar-pro
+  perplexity_preset: fast             # Agent API preset: fast | low | medium | high | xhigh
   request_timeout_s: 25
 
 images:
-  chain: [gpt-image-1, dall-e-3, dall-e-2, placeholder]
+  chain: [gpt-image-1, gpt-image-1-mini, placeholder]   # DALL-E 2/3 are retired
+  quality: medium                     # the API defaults to "high" (~4x the cost)
   sizes:
     gpt-image-1: 1536x1024
-    dall-e-3: 1792x1024
-    dall-e-2: 1024x1024
+    gpt-image-1-mini: 1536x1024
   min_dimension_px: 256
 
 # USD per 1M tokens (input, output) — used for cost tracking only. Update as prices change.
@@ -44,11 +44,10 @@ pricing:
   gemini-2.5-pro: [1.25, 10.00]
   gemini-2.5-flash: [0.30, 2.50]
 image_pricing:          # USD per image (approx.)
-  gpt-image-1: 0.063
-  dall-e-3: 0.080
-  dall-e-2: 0.020
+  gpt-image-1: 0.063            # medium, 1536x1024
+  gpt-image-1-mini: 0.015       # medium, 1536x1024
   placeholder: 0.0
 search_pricing:         # USD per call (approx.; free tiers first)
   serpapi: 0.0
   tavily: 0.0
-  perplexity: 0.005
+  perplexity: 0.002             # fast preset, measured
