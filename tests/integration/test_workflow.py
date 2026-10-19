@@ -212,3 +212,16 @@ def test_router_functions():
 
 def test_render_response_empty():
     assert "couldn't produce" in render_response({})
+
+
+def test_linkedin_hook_alternatives_and_swap(app_factory):
+    roles = default_roles("linkedin")
+    roles["linkedin_writer"] = {**roles["linkedin_writer"], "hook_options": [
+        {"style": "hot take", "text": "Slow replies cost you more than ads do."}]}
+    app, _, _ = app_factory(roles)
+    result = app.run("Write a LinkedIn post about fast replies", thread_id="hooks")
+    assert "**Alternative hooks**" in result.response and "Slow replies cost you more" in result.response
+    report = app.apply_hook("hooks", "Slow replies cost you more than ads do.")
+    post = app.state("hooks")["linkedin"]
+    assert post["text"].startswith("Slow replies cost you more than ads do.")
+    assert app.state("hooks")["quality"]["linkedin"]["overall"] == report.overall

@@ -145,6 +145,10 @@ def render_response(state: ContentState) -> str:
     if "linkedin" in outputs and state.get("linkedin"):
         li = state["linkedin"]
         comment = f"\n\n**Suggested first comment:**\n\n{li['first_comment']}" if li.get("first_comment") else ""
+        alternatives = [o for o in li.get("hook_options", []) if o["text"] != li.get("hook")]
+        if alternatives:
+            comment += ("\n\n**Alternative hooks** (swap one in from the Content Dashboard):\n\n"
+                        + "\n".join(f"- _{o['style']}_ ({o['score']:.0f}/100): {o['text']}" for o in alternatives))
         parts.append(f"## 💼 LinkedIn Post ({len(li['text'])} characters, {len(li['hashtags'])} hashtags)\n"
                      f"{_quality_line(state, 'linkedin')}\n\n{li['text']}{comment}\n\n"
                      f"_{li['provenance'].get('grounding', '').replace('_', ' ')}_")

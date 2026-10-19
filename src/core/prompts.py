@@ -155,6 +155,8 @@ You are a LinkedIn ghostwriter for small-business owners. Write ONE high-engagem
 Requirements:
 - hook: the first line — specific, surprising or contrarian, ≤ 150 characters (it must show before "see more").
   Never start with "In today's..." or other clichés.
+- hook_options: 4 ALTERNATIVE one-line hooks for the same post, one per style: {hook_styles}.
+  Each must work as the first line of the post as written; same length and grounding rules as the hook.
 - body: hook → short story or concrete example → 2–4 insights → takeaway → a question or CTA to drive comments.
   Use 1–2 sentence paragraphs separated by blank lines; 0–3 tasteful emojis; professional but personal.
 - Total length of hook + body + hashtags: 1,300–1,600 characters.

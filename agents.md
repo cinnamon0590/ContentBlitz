@@ -22,7 +22,7 @@ contributors and AI coding agents. For setup, see `README.md` / `README.txt`. Fo
 | Images | gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → Pillow branded placeholder |
 | Memory | `InMemorySaver` (dev) / `SqliteSaver` (prod) keyed by `thread_id` |
 | UI | Streamlit: Chat · Content Dashboard · Research · Images · Export · Settings |
-| Tests | 154 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live` |
+| Tests | 160 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live` |
 
 ### Repository map
 
@@ -216,6 +216,7 @@ node({"user_input": "Write an SEO blog about email marketing for bakeries"})
 | **Reads / writes** | Reads `research`, `brand`, `blog` (for voice consistency in campaigns). Writes `linkedin` (`LinkedInPost`), `quality_target="linkedin"` |
 | **LLM** | `smart` tier, structured `LinkedInDraft` (prompt `LINKEDIN_WRITER`) |
 | **Templates** | insights · story · tips · announcement |
+| **Hook variants** | The model returns 4 alternative hooks (story · hot take · how-to hack · data point). `rank_hooks` scores each with the quality gate's `score_hook` rules (length, clichés, stock openers, exclamation marks); the best leads the post (ties keep the drafted hook) and all are stored in `hook_options`. `swap_hook` / `ContentBlitz.apply_hook` swap one in from the Dashboard and re-score |
 | **Deterministic formatting** | `strip_links` (links move to the first comment). Remove `[n]`. `format_linkedin`: normalize/dedupe CamelCase hashtags, cap at 12, top up from trend candidates, split long paragraphs, trim to 1600 characters at a sentence boundary |
 | **Attribution** | `first_comment` = "📚 Sources for this post:" plus the top research sources with URLs |
 | **Test in isolation** | `pytest tests/unit/test_agent_writers.py -k linkedin` |
@@ -254,7 +255,7 @@ LLM critique (`QUALITY_CRITIC`) only adds advisory feedback, as a guard against 
 | Content | Weighted categories (0–100 each) |
 |---|---|
 | Blog | SEO 30% (density 1–2%, keyword in H1 and first 100 words, meta 150–160 characters, title ≤ 60 characters with the keyword near the front, keyword in the slug) · Structure 20% (one H1, ≥ 3 H2, no skipped levels, FAQ, CTA) · Readability 15% (Flesch vs brand target) · Citations 15% (uncited statistics, invalid ids) · Brand voice 10% · Length 10% |
-| LinkedIn | Length 25% (1300–1600) · Hashtags 15% (8–12) · Hook 15% (≤ 210 characters, no clichés) · Formatting 20% (paragraphs, no links, readability) · CTA 10% · Brand voice 15% |
+| LinkedIn | Length 25% (1300–1600) · Hashtags 15% (8–12) · Hook 15% (≤ 210 characters, no clichés or stock openers, no exclamation marks) · Formatting 20% (paragraphs, no links, readability) · CTA 10% · Brand voice 15% |
 | Report | Structure 35% · Citations 35% · Readability 15% · Brand voice 15% |
 
 If `overall < pass_threshold` (70 in dev, 75 in prod), the gate sends up to 8 suggestions back to the same

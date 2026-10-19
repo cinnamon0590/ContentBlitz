@@ -20,6 +20,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.errors import GraphRecursionError
 
 from src.agents import AgentDeps
+from src.agents.linkedin_writer import swap_hook
 from src.core.config import AppConfig, get_config
 from src.core.prompts import BRAND_VOICE_LEARNER
 from src.integrations.openai_client import message_text
@@ -142,6 +143,13 @@ class ContentBlitz:
         if kind == "linkedin":
             return validator.score_linkedin(LinkedInPost.model_validate(data), brand)
         return validator.score_report(StrategyReport.model_validate(data), brand)
+
+    def apply_hook(self, thread_id: str, hook: str, brand: BrandProfile | dict | None = None) -> QualityReport:
+        """Swap the LinkedIn post's opening line for ``hook`` (Content Dashboard), re-score and persist."""
+        post = swap_hook(LinkedInPost.model_validate(self.state(thread_id)["linkedin"]), hook)
+        report = self.rescore("linkedin", post.model_dump(), brand, thread_id)
+        self.update_artifact(thread_id, "linkedin", post.model_dump(), quality=report)
+        return report
 
     def learn_brand_voice(self, sample_text: str, base: BrandProfile | None = None) -> BrandProfile:
         return learn_brand_voice(sample_text, base or BrandProfile(), self.deps.llm, BRAND_VOICE_LEARNER)

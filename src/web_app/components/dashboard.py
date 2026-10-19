@@ -29,6 +29,25 @@ def _quality_panel(report: QualityReport) -> None:
         st.json(report.metrics)
 
 
+def _hook_picker(data: dict) -> None:
+    """Pick one of the scored hook variants; the post's opening line is swapped and re-scored."""
+    options = data.get("hook_options") or []
+    if len(options) < 2:
+        return
+    st.markdown("**Hook options**")
+    labels = [f"{o['score']:.0f}/100 · {o['style']} — {o['text']}" for o in options]
+    current = next((i for i, o in enumerate(options) if o["text"] == data.get("hook")), 0)
+    choice = st.radio("Opening line", range(len(options)), index=current, format_func=lambda i: labels[i],
+                      key="hook-choice", label_visibility="collapsed")
+    if options[choice]["issues"]:
+        st.caption("⚠️ " + " ".join(options[choice]["issues"]))
+    if st.button("Use this hook", key="hook-apply", disabled=choice == current):
+        report = get_app().apply_hook(thread_id(), options[choice]["text"], brand())
+        st.session_state.pop("edit-linkedin", None)  # let the editor pick up the new text
+        st.toast(f"Hook swapped. New score: {report.overall:.0f}/100")
+        st.rerun()
+
+
 def _provenance_panel(data: dict) -> None:
     provenance = Provenance.model_validate(data.get("provenance") or {})
     with st.expander(f"Sources & provenance — {provenance.label}"):
@@ -79,6 +98,8 @@ def render_dashboard() -> None:
         st.markdown("**Preview**")
         with st.container(border=True, height=420):
             st.markdown(edited)
+        if kind == "linkedin":
+            _hook_picker(data)
         if kind == "linkedin" and data.get("first_comment"):
             st.markdown("**Suggested first comment**")
             st.code(data["first_comment"], language=None)

@@ -256,6 +256,8 @@ def default_roles(intent: str = "blog", **request_overrides) -> dict:
             "body": LINKEDIN_BODY + " See https://not-allowed.example [1]",
             "hashtags": ["SmallBusiness", "EmailMarketing", "#Bakery", "Marketing", "CustomerService",
                          "Leads", "Growth", "LocalBusiness", "Entrepreneur"],
+            "hook_options": [{"style": "story", "text": "Last spring, one client nearly lost its best customer."},
+                             {"style": "question", "text": "Want to know the cheapest growth lever?"}],
         },
         "image_prompt_enhancer": {"enhanced_prompt": "Warm bakery counter at sunrise, croissants, soft light",
                                   "alt_text": "Fresh croissants on a bakery counter at sunrise"},

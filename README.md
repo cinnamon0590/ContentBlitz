@@ -36,7 +36,7 @@ API goes down.
 | **Smart routing** | LLM intent classification using conversation context, *plus* post-research routing, with a heuristic fallback |
 | **Research with citations** | Several strategic queries; SerpAPI → Tavily → Perplexity; numbered `[n]` citations to real URLs; every output carries a **Sources & Provenance** section |
 | **SEO blogs** | One H1, H2/H3 structure, 1–2% keyword density, 150–160 character meta description, slug, FAQ (People-also-ask), CTA, internal-link ideas, Flesch readability |
-| **LinkedIn posts** | 1300–1600 characters, hook → story → CTA, 8–12 hashtags, mobile line breaks, sources in a suggested first comment |
+| **LinkedIn posts** | 1300–1600 characters, hook → story → CTA, 8–12 hashtags, mobile line breaks, sources in a suggested first comment; **4 alternative hooks** (story, hot take, how-to hack, data point), scored, best one first, swappable in the Dashboard |
 | **Images** | Art-director prompt enhancement with brand palette; gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → branded placeholder; Pillow validation; PNG + metadata |
 | **Quality pipeline** | Deterministic scoring (SEO, structure, readability, citations, brand voice), with automatic revision loops and suggestions |
 | **Brand voice** | One brand profile across all formats, rule-based checks, and **learn-from-sample** |
@@ -46,7 +46,7 @@ API goes down.
 | **Guardrails** | Prompt-injection and policy screens, PII redaction, moderation, citation integrity, tool and revision caps, per-request budget |
 | **UI** | Streamlit with tabs: Chat · Content Dashboard (edit/score/refine) · Research panel · Image gallery · Export · Settings |
 | **Export** | Markdown, HTML, WordPress blocks, TXT, PDF, PNG/JPG, ZIP bundle |
-| **Quality of engineering** | 154 offline tests (~98% coverage), live-API tests, Docker, dev/prod configs, JSON logs, cost tracking |
+| **Quality of engineering** | 160 offline tests (~98% coverage), live-API tests, Docker, dev/prod configs, JSON logs, cost tracking |
 
 ---
 
@@ -163,6 +163,7 @@ Type these in the **Chat** tab. Each line is one turn in the same conversation u
 | Research → blog | (same thread) `Now write an SEO blog post from that research` | No new research. The Blog Writer runs keyword research, writes the post, the quality gate scores it (and revises if it scores under 70), and the result shows meta, slug and score |
 | Blog directly | `Write a how-to blog post about email marketing for local bakeries` | Research first, then the blog (how-to template) |
 | LinkedIn | `Create a LinkedIn post about why fast replies win more customers` | Research, then the trends tool, then a 1300–1600 character post with 8–12 hashtags; sources go into a "first comment" |
+| Hook options | (after a LinkedIn post) Content Dashboard → **Hook options** | Pick one of the scored alternative openings; the post is rewritten and re-scored |
 | Refine | `Make the LinkedIn post more casual and shorter` | Refine mode: the previous draft plus your instructions; no new research |
 | Image | `Make an image of a cozy coffee shop at sunrise for our autumn campaign` | Prompt enhancement, then gpt-image-1 (or a fallback); shown in Chat and in the Images tab |
 | Campaign / series | `Create a full campaign (blog, LinkedIn, image) about our new vegan menu` | Research → blog → LinkedIn → image, all on-brand and sharing the same sources |
@@ -218,7 +219,7 @@ Each agent factory (`make_query_handler`, `make_research_agent`, `make_blog_writ
 ## 8. Testing
 
 ```bash
-pytest                         # 154 offline tests (unit + integration + e2e UI + notebook); no keys needed
+pytest                         # 160 offline tests (unit + integration + e2e UI + notebook); no keys needed
 pytest --cov=src               # coverage report (~98%; web_app UI code is excluded and smoke-tested instead)
 pytest tests/unit/test_agent_research.py      # test one agent on its own
 pytest -m live                 # real API calls (needs .env keys; costs a few cents)

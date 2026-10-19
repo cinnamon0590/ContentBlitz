@@ -170,9 +170,17 @@ class BlogPost(BaseModel):
     provenance: Provenance = Field(default_factory=Provenance)
 
 
+class HookOption(BaseModel):
+    style: str
+    text: str
+    score: float = 0.0
+    issues: list[str] = Field(default_factory=list)
+
+
 class LinkedInPost(BaseModel):
     text: str
     hook: str = ""
+    hook_options: list[HookOption] = Field(default_factory=list)  # scored alternatives, best first
     hashtags: list[str] = Field(default_factory=list)
     first_comment: str = ""
     template: str = "insights"

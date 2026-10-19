@@ -63,6 +63,10 @@ def artifact_markdown(kind: str, data: dict[str, Any], absolute_images: bool = F
         parts = ["# LinkedIn Post", "", post.text, ""]
         if post.first_comment:
             parts += ["## Suggested first comment (sources)", "", post.first_comment, ""]
+        alternatives = [o for o in post.hook_options if o.text != post.hook]
+        if alternatives:
+            parts += ["## Alternative hooks", ""] + [f"- *{o.style}* ({o.score:.0f}/100): {o.text}"
+                                                     for o in alternatives] + [""]
         parts.append(post.provenance.to_markdown())
         return "\n".join(parts)
     if kind == "research":

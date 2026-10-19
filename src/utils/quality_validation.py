@@ -32,6 +32,8 @@ LINKEDIN_WEIGHTS = {"length": 0.25, "hashtags": 0.15, "hook": 0.15, "formatting"
 REPORT_WEIGHTS = {"structure": 0.35, "citations": 0.35, "readability": 0.15, "brand_voice": 0.15}
 
 GENERIC_HOOKS = ("in today's", "in this day and age", "in the ever-evolving", "are you ready", "have you ever wondered")
+# Weaker, overused openers: allowed, but a more specific hook should win.
+STOCK_OPENERS = ("want to", "did you know", "ever wonder", "here's why", "let's talk about", "imagine")
 
 
 def _band(value: float, lo: float, hi: float, tolerance: float) -> float:
@@ -70,6 +72,30 @@ def brand_voice_check(text: str, brand: BrandProfile) -> tuple[float, list[str],
         score -= 10
         suggestions.append("Tone down exclamation marks for a professional voice.")
     return max(0.0, score), suggestions, {"banned_words_found": banned_hits, "missing_phrases": missing_required}
+
+
+def score_hook(hook: str) -> tuple[float, list[str]]:
+    """Score a LinkedIn opening line (0–100) with the issues to fix."""
+    score, issues = 100.0, []
+    if len(hook) > co.LINKEDIN_TARGETS["hook_max_chars"]:
+        score -= 40
+        issues.append("Shorten the opening line so the hook shows before 'see more'.")
+    if hook.lower().startswith(GENERIC_HOOKS):
+        score -= 40
+        issues.append("Replace the generic opener with a specific, surprising hook.")
+    if len(hook) < 15:
+        score -= 30
+        issues.append("Open with a stronger, more substantive hook line.")
+    elif 150 < len(hook) <= co.LINKEDIN_TARGETS["hook_max_chars"]:
+        score -= 15
+        issues.append("Tighten the hook to under 150 characters so it reads at a glance.")
+    if hook.lower().startswith(STOCK_OPENERS):
+        score -= 20
+        issues.append("Swap the stock opener for something specific to this post.")
+    if "!" in hook:
+        score -= 10
+        issues.append("Drop the exclamation mark; let the claim carry the hook.")
+    return max(0.0, score), issues
 
 
 class Critique(BaseModel):
@@ -198,16 +224,8 @@ class QualityValidator:
         if not tlo <= m["unique_hashtags"] <= thi:
             suggestions.append(f"Use {tlo}–{thi} relevant hashtags (currently {m['unique_hashtags']}).")
 
-        hook = 100.0
-        if m["hook_chars"] > co.LINKEDIN_TARGETS["hook_max_chars"]:
-            hook -= 40
-            suggestions.append("Shorten the opening line so the hook shows before 'see more'.")
-        if m["hook"].lower().startswith(GENERIC_HOOKS):
-            hook -= 40
-            suggestions.append("Replace the generic opener with a specific, surprising hook.")
-        if m["hook_chars"] < 15:
-            hook -= 30
-            suggestions.append("Open with a stronger, more substantive hook line.")
+        hook, hook_issues = score_hook(m["hook"])
+        suggestions.extend(hook_issues)
 
         formatting = 100.0
         if m["paragraphs"] < 4:
@@ -230,7 +248,7 @@ class QualityValidator:
         brand_score, brand_suggestions, brand_metrics = brand_voice_check(post.text, brand)
         suggestions.extend(brand_suggestions)
 
-        scores = {"length": length, "hashtags": hashtags, "hook": max(0, hook), "formatting": max(0, formatting),
+        scores = {"length": length, "hashtags": hashtags, "hook": hook, "formatting": max(0, formatting),
                   "cta": cta, "brand_voice": brand_score}
         metrics = {**m, "flesch_reading_ease": ease, **brand_metrics}
         return self._finish("linkedin", scores, LINKEDIN_WEIGHTS, metrics, suggestions, post.text, brand)
