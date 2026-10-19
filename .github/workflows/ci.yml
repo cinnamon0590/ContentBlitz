@@ -1,4 +1,4 @@
-# Continuous integration: lint + the offline test suite on every push and pull request.
+# Continuous integration: lint + the offline test suite on every push and pull request, plus a Docker check.
 # No API keys are needed — every agent runs against the scripted fakes in tests/conftest.py,
 # and the live tests (`pytest -m live`) are excluded by the default `addopts`.
 name: CI
@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]   # every version the project supports (>= 3.11)
 
     steps:
       - uses: actions/checkout@v4
@@ -47,3 +47,46 @@ jobs:
           APP_ENV: development
           LLM_PROVIDER: openai
         run: python -m pytest --cov=src --cov-report=term --cov-fail-under=90
+
+  docker:
+    name: Docker image builds, serves the app and passes the tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate docker-compose.yml
+        run: |
+          touch .env   # compose needs the file to exist; real keys are never available in CI
+          docker compose config --quiet
+
+      - name: Build the image
+        run: docker build --tag contentblitz:ci .
+
+      - name: Start the container and wait for the health check
+        run: |
+          docker run --detach --name contentblitz --publish 8501:8501 contentblitz:ci
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://localhost:8501/_stcore/health; then
+              echo " - healthy after ${attempt} attempt(s)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "The app never became healthy. Container logs:"
+          docker logs contentblitz
+          exit 1
+
+      - name: Run the unit and integration tests inside the container
+        run: >
+          docker exec --env APP_ENV=development --env LLM_PROVIDER=openai contentblitz
+          python -m pytest -q -p no:cacheprovider tests/unit tests/integration
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker logs contentblitz || true
+
+      - name: Stop the container
+        if: always()
+        run: docker rm --force contentblitz || true

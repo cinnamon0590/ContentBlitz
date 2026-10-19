@@ -22,7 +22,7 @@ contributors and AI coding agents. For setup, see `README.md` / `README.txt`. Fo
 | Images | gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → Pillow branded placeholder |
 | Memory | `InMemorySaver` (dev) / `SqliteSaver` (prod) keyed by `thread_id` |
 | UI | Streamlit: Chat · Content Dashboard · Research · Images · Export · Settings |
-| Tests | 201 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live`; GitHub Actions CI on every push |
+| Tests | 201 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live`; GitHub Actions CI on every push (Python 3.11–3.14 + Docker image build) |
 
 ### Repository map
 
