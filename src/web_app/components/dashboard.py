@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 
 import streamlit as st
@@ -29,6 +31,15 @@ def _quality_panel(report: QualityReport) -> None:
         st.json(report.metrics)
 
 
+def _content_version(data: dict) -> str:
+    """Fingerprint of the stored artifact, used in widget keys.
+
+    Streamlit keeps a widget's value for as long as its key is unchanged, so with fixed keys the editor would keep
+    showing old text after a hook swap, an AI refine or a newly generated post. Keying by content resets them.
+    """
+    return hashlib.sha1(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()[:10]
+
+
 def _hook_picker(data: dict) -> None:
     """Pick one of the scored hook variants; the post's opening line is swapped and re-scored."""
     options = data.get("hook_options") or []
@@ -38,12 +49,11 @@ def _hook_picker(data: dict) -> None:
     labels = [f"{o['score']:.0f}/100 · {o['style']} — {o['text']}" for o in options]
     current = next((i for i, o in enumerate(options) if o["text"] == data.get("hook")), 0)
     choice = st.radio("Opening line", range(len(options)), index=current, format_func=lambda i: labels[i],
-                      key="hook-choice", label_visibility="collapsed")
+                      key=f"hook-choice-{_content_version(data)}", label_visibility="collapsed")
     if options[choice]["issues"]:
         st.caption("⚠️ " + " ".join(options[choice]["issues"]))
     if st.button("Use this hook", key="hook-apply", disabled=choice == current):
         report = get_app().apply_hook(thread_id(), options[choice]["text"], brand())
-        st.session_state.pop("edit-linkedin", None)  # let the editor pick up the new text
         st.toast(f"Hook swapped. New score: {report.overall:.0f}/100")
         st.rerun()
 
@@ -65,22 +75,23 @@ def render_dashboard() -> None:
                                 key="dash-kind") or available[0]
     data = dict(state[kind])
     field = KINDS[kind][1]
+    version = _content_version(data)
     quality = (state.get("quality") or {}).get(kind)
 
     left, right = st.columns([3, 2])
     with left:
         if kind == "blog":
-            st.text_input("Title", value=data["title"], key=f"title-{kind}")
-            st.text_area("Meta description", value=data["meta_description"], key=f"meta-{kind}", height=80,
+            st.text_input("Title", value=data["title"], key=f"title-{kind}-{version}")
+            st.text_area("Meta description", value=data["meta_description"], key=f"meta-{kind}-{version}", height=80,
                          help="150–160 characters works best in search results.")
-            st.caption(f"{len(st.session_state[f'meta-{kind}'])} characters · slug: /blog/{data['slug']}")
-        edited = st.text_area("Edit content", value=data[field], height=520, key=f"edit-{kind}")
+            st.caption(f"{len(st.session_state[f'meta-{kind}-{version}'])} characters · slug: /blog/{data['slug']}")
+        edited = st.text_area("Edit content", value=data[field], height=520, key=f"edit-{kind}-{version}")
         c1, c2 = st.columns(2)
         if c1.button("💾 Save edits & re-score", key=f"save-{kind}", use_container_width=True):
             data[field] = edited
             if kind == "blog":
-                data["title"] = st.session_state[f"title-{kind}"]
-                data["meta_description"] = st.session_state[f"meta-{kind}"]
+                data["title"] = st.session_state[f"title-{kind}-{version}"]
+                data["meta_description"] = st.session_state[f"meta-{kind}-{version}"]
             report = app.rescore(kind, data, brand(), thread_id())
             app.update_artifact(thread_id(), kind, data, quality=report)
             st.toast(f"Saved. New score: {report.overall:.0f}/100")
