@@ -1,0 +1,11 @@
+/* ContentBlitz — light touch on top of Streamlit's theme (works in light and dark mode). */
+.block-container { padding-top: 1.5rem; max-width: 1200px; }
+[data-testid="stChatMessage"] { border-radius: 12px; }
+[data-testid="stChatMessage"] h2 { font-size: 1.25rem; margin-top: .5rem; }
+.cb-hero { display: flex; align-items: center; gap: .75rem; margin-bottom: .25rem; }
+.cb-hero h1 { font-size: 1.9rem; margin: 0; }
+.cb-tag { font-size: .8rem; padding: .1rem .55rem; border-radius: 999px;
+          border: 1px solid rgba(128,128,128,.4); opacity: .85; }
+/* Larger tap targets for mobile */
+button[kind] { min-height: 2.6rem; }
+@media (max-width: 640px) { .cb-hero h1 { font-size: 1.4rem; } }

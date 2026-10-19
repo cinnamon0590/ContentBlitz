@@ -124,9 +124,12 @@ class ContentBlitz:
         return [("user" if isinstance(m, HumanMessage) else "assistant", message_text(m))
                 for m in messages if isinstance(m, HumanMessage | AIMessage)]
 
-    def update_artifact(self, thread_id: str, kind: str, data: dict) -> None:
-        """Persist a user's manual edit (Content Dashboard) into the thread's state."""
-        self.graph.update_state(self._run_config(thread_id), {kind: data}, as_node="finalize")
+    def update_artifact(self, thread_id: str, kind: str, data: dict, quality: QualityReport | None = None) -> None:
+        """Persist a user's manual edit (Content Dashboard), and optionally its new score, into the thread."""
+        update: dict[str, Any] = {kind: data}
+        if quality is not None:
+            update["quality"] = {**(self.state(thread_id).get("quality") or {}), kind: quality.model_dump()}
+        self.graph.update_state(self._run_config(thread_id), update, as_node="finalize")
 
     def rescore(self, kind: str, data: dict, brand: BrandProfile | dict | None = None,
                 thread_id: str = "default") -> QualityReport:

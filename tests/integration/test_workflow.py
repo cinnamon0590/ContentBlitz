@@ -177,9 +177,10 @@ def test_dashboard_edit_rescore_and_status(app_factory):
     result = app.run("Write an SEO blog about email marketing for bakeries", thread_id="t15")
     blog = dict(result.artifacts["blog"])
     blog["markdown"] = blog["markdown"].replace("Measure What Matters", "Track What Matters")
-    app.update_artifact("t15", "blog", blog)
+    report = app.rescore("blog", blog, thread_id="t15")
+    app.update_artifact("t15", "blog", blog, quality=report)
     assert "Track What Matters" in app.state("t15")["blog"]["markdown"]
-    assert app.rescore("blog", blog, thread_id="t15").overall > 0
+    assert report.overall > 0 and app.state("t15")["quality"]["blog"]["overall"] == report.overall
     linkedin = {"text": "Hook\n\nBody? #a #b"}
     assert app.rescore("linkedin", linkedin).content_type == "linkedin"
     assert app.rescore("report", {"title": "r", "markdown": "# r"}).content_type == "report"
