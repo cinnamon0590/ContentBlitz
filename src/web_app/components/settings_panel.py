@@ -79,6 +79,8 @@ def render_settings_panel() -> None:
         st.markdown(f"**LLM:** `{status['llm']}`  \n**Memory:** `{status['checkpointer']}`")
         for key, present in status["keys"].items():
             st.markdown(f"{'✅' if present else '⬜'} {key.upper()} key")
+        for warning in status.get("key_warnings", []):
+            st.warning(warning, icon="🔑")
         st.markdown("**Research fallback chain:** " + (" → ".join(status["research_chain"]) or "_none configured_"))
         st.markdown("**Image fallback chain:** " + " → ".join(status["image_chain"]))
 

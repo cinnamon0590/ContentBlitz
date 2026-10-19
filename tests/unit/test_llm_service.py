@@ -127,3 +127,35 @@ def test_moderation_fails_open_and_disabled():
     assert ModerationClient("k", client=_FakeOpenAI(boom=True)).check("x") == (False, [])
     assert ModerationClient(None).check("x") == (False, [])
     assert ModerationClient("k", enabled=False, client=_FakeOpenAI(True)).check("x") == (False, [])
+
+
+class _Recorder(FakeChatModel):
+    """Records which structured-output method LLMService asks for."""
+
+    def with_structured_output(self, schema, method="function_calling", **kwargs):  # type: ignore[override]
+        self.calls.append(("method", method))
+        return super().with_structured_output(schema, **kwargs)
+
+
+def test_structured_uses_the_providers_method(config):
+    config.llm["provider"] = "anthropic"  # anthropic block sets structured_output: json_schema
+    llm = LLMService(config)
+    recorder = _Recorder(responder=lambda m: '{"choice": "blog"}')
+    recorder.calls = []
+    llm._models["fast"] = recorder
+    assert llm.structured(Pick, "sys", "user") == Pick(choice="blog")
+    assert ("method", "json_schema") in recorder.calls
+
+
+def test_create_chat_model_omits_temperature_when_none(config, monkeypatch):
+    monkeypatch.setattr(config.secrets, "openai_api_key", "sk-test")
+    assert create_chat_model("openai", "gpt-4o-mini", None, config).temperature is None
+    assert create_chat_model("openai", "gpt-4o-mini", 0.3, config).temperature == 0.3
+
+
+def test_create_chat_model_builds_claude_without_sampling(config, monkeypatch):
+    pytest.importorskip("langchain_anthropic")
+    config.llm["provider"] = "anthropic"
+    monkeypatch.setattr(config.secrets, "anthropic_api_key", "sk-ant-test")
+    model = create_chat_model("anthropic", "claude-sonnet-5-5", None, config)
+    assert model.temperature is None and model.max_tokens == 16000

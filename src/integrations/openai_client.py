@@ -33,11 +33,16 @@ class ProviderUnavailableError(RuntimeError):
     """Raised when a provider's package or API key is missing."""
 
 
-def create_chat_model(provider: str, model: str, temperature: float, config: AppConfig) -> BaseChatModel:
-    """Factory for LangChain chat models. Optional providers are imported lazily."""
+def create_chat_model(provider: str, model: str, temperature: float | None, config: AppConfig) -> BaseChatModel:
+    """Factory for LangChain chat models. Optional providers are imported lazily.
+
+    ``temperature=None`` sends no sampling parameter (required by models that reject
+    non-default values, such as Claude Sonnet 5.5 and Claude Haiku 5.5).
+    """
     timeout = config.llm.get("request_timeout_s", 60)
     retries = config.llm.get("max_retries", 2)
     secrets = config.secrets
+    sampling = {} if temperature is None else {"temperature": temperature}
     if provider == "openai":
         if not secrets.openai_api_key:
             raise ProviderUnavailableError("OPENAI_API_KEY is not set")
@@ -45,7 +50,7 @@ def create_chat_model(provider: str, model: str, temperature: float, config: App
 
         return ChatOpenAI(
             model=model,
-            temperature=temperature,
+            **sampling,
             timeout=timeout,
             max_retries=retries,
             api_key=secrets.openai_api_key,
@@ -57,7 +62,8 @@ def create_chat_model(provider: str, model: str, temperature: float, config: App
             from langchain_anthropic import ChatAnthropic
         except ImportError as exc:  # pragma: no cover - optional dependency
             raise ProviderUnavailableError("pip install langchain-anthropic") from exc
-        return ChatAnthropic(model=model, temperature=temperature, timeout=timeout, max_retries=retries,
+        return ChatAnthropic(model=model, **sampling, timeout=timeout, max_retries=retries,
+                             max_tokens=config.provider_settings().get("max_tokens", 16000),
                              api_key=secrets.anthropic_api_key)
     if provider == "gemini":
         if not secrets.google_api_key:
@@ -66,7 +72,7 @@ def create_chat_model(provider: str, model: str, temperature: float, config: App
             from langchain_google_genai import ChatGoogleGenerativeAI
         except ImportError as exc:  # pragma: no cover - optional dependency
             raise ProviderUnavailableError("pip install langchain-google-genai") from exc
-        return ChatGoogleGenerativeAI(model=model, temperature=temperature, timeout=timeout,
+        return ChatGoogleGenerativeAI(model=model, **sampling, timeout=timeout,
                                       max_retries=retries, google_api_key=secrets.google_api_key)
     raise ProviderUnavailableError(f"Unknown LLM provider '{provider}'")
 
@@ -180,13 +186,15 @@ class LLMService:
     def structured(self, schema: type[T], system: str, user: str, tier: str = "fast") -> T | None:
         """Return a validated ``schema`` instance, or ``None`` if every strategy fails.
 
-        Strategy 1: native structured output (function calling).
+        Strategy 1: native structured output — function calling, or ``json_schema``
+        when the provider config asks for it (forced tool calls are a 400 on some models).
         Strategy 2: ask for JSON in plain text and parse it (works with any model,
         including the fakes used in tests).
         """
         messages = [SystemMessage(system), HumanMessage(user)]
         try:
-            runnable = self.model(tier).with_structured_output(schema, method="function_calling")
+            method = "function_calling" if self._injected else self.config.structured_output_method()
+            runnable = self.model(tier).with_structured_output(schema, method=method)
             result = runnable.invoke(messages, config={"callbacks": self._callbacks()})
             if isinstance(result, schema):
                 return result

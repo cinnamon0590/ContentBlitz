@@ -9,9 +9,9 @@ langchain-core>=1.6
 langchain-openai>=1.7
 openai>=3.0
 
-# --- Optional alternate LLM providers (uncomment + set key to enable) ---
-# langchain-anthropic>=1.0
-# langchain-google-genai>=3.0
+# --- Alternate LLM providers (switch with LLM_PROVIDER=anthropic|gemini; verified live) ---
+langchain-anthropic>=1.7
+langchain-google-genai>=4.0
 
 # --- Config / validation ---
 pydantic>=2.10

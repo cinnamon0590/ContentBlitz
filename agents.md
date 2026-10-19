@@ -17,12 +17,12 @@ contributors and AI coding agents. For setup, see `README.md` / `README.txt`. Fo
 | Capstone | Project 2 — ContentBlitz: Content Marketing Agent (Applied Agentic AI for SWEs) |
 | Orchestration | LangGraph `StateGraph` (router + agent ↔ ToolNode loops + checkpointer) |
 | Agents | Query Handler · Deep Research · SEO Blog Writer · LinkedIn Writer · Image Generator · Content Strategist |
-| LLM | OpenAI `gpt-4o` (writing) / `gpt-4o-mini` (routing, scoring); fallback `gpt-4.1-mini`; Anthropic/Gemini switchable (Gemini: `gemini-pro-latest` / `gemini-3.8-flash`) |
+| LLM | OpenAI `gpt-4o` (writing) / `gpt-4o-mini` (routing, scoring); fallback `gpt-4.1-mini`; Anthropic (`claude-sonnet-5-5` / `claude-haiku-5-5`) and Gemini (`gemini-pro-latest` / `gemini-3.8-flash`) switchable with `LLM_PROVIDER`; all three verified live end to end |
 | Research | SerpAPI → Tavily → Perplexity Agent API (fallback chain, 30-min cache, stale-cache outage fallback) |
 | Images | gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → Pillow branded placeholder |
 | Memory | `InMemorySaver` (dev) / `SqliteSaver` (prod) keyed by `thread_id` |
 | UI | Streamlit: Chat · Content Dashboard · Research · Images · Export · Settings |
-| Tests | 179 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live` |
+| Tests | 185 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live` |
 
 ### Repository map
 
@@ -292,10 +292,10 @@ records a warning and moves on. Users can also edit content in the **Content Das
 
 ## 7. Redundancy and performance
 
-- **LLM**: smart/fast tiers. Fallback models via `LLMService.invoke`, plus bound fallbacks for tool loops. Provider switch with `LLM_PROVIDER`.
+- **LLM**: smart/fast tiers. Fallback models via `LLMService.invoke`, plus bound fallbacks for tool loops. Provider switch with `LLM_PROVIDER`. Per-provider quirks live in config, not code: the `anthropic` block sets `temperature: null` (Claude Sonnet 5.5 / Haiku 5.5 reject sampling parameters) and `structured_output: json_schema` (forced tool calls are a 400 on Sonnet 5.5). `Secrets.format_warnings` flags a key pasted into the wrong slot.
 - **Research**: `SearchChain` tries SerpAPI → Tavily → Perplexity, then stale cache, then an explicit offline outcome. Results are cached for 30 minutes.
 - **Images**: `ImageChain` (4 levels across two providers, OpenAI and Google; the last one never fails).
-- **Structured output**: native function calling first, then JSON-mode parsing, then deterministic fallbacks.
+- **Structured output**: native structured output first (function calling, or `json_schema` per provider), then JSON-mode parsing, then deterministic fallbacks.
 - **Observability**: `CostTracker` (tokens, searches, images, cache hits, USD per request, shown in the UI), JSON logs in production, optional LangSmith tracing.
 
 ---

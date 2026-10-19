@@ -32,9 +32,11 @@ from src.integrations.serp_client import SearchChain, SerpAPIClient
 from src.integrations.tavily_client import TavilyClient
 from src.utils.cache import TTLCache
 from src.utils.guardrails import enforce_citation_integrity
-from src.utils.observability import CostTracker
+from src.utils.observability import CostTracker, get_logger
 from src.utils.quality_validation import QualityValidator
 from src.workflow.state_management import BrandProfile, ContentRequest, ContentState, Source, SourceRegistry
+
+log = get_logger("agents")
 
 
 @dataclass
@@ -71,6 +73,8 @@ class AgentDeps:
 
         tracker = CostTracker(config.pricing, config.image_pricing, config.search_pricing)
         secrets = config.secrets
+        for warning in secrets.format_warnings():
+            log.warning(warning)
         timeout = config.research.get("request_timeout_s", 25)
         serp = SerpAPIClient(secrets.serpapi_api_key, timeout=timeout)
         providers = {

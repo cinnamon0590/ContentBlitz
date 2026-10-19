@@ -24,6 +24,10 @@ from pydantic import BaseModel, Field
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = PROJECT_ROOT / "config"
 
+# Known key prefixes, used only to warn about a key pasted into the wrong slot (never to block).
+# Google is left out on purpose: it issues keys in more than one format (AIza…, AQ.…).
+KEY_PREFIXES = {"anthropic_api_key": "sk-ant-", "tavily_api_key": "tvly-", "perplexity_api_key": "pplx-"}
+
 
 class Secrets(BaseModel):
     """API keys. Missing keys simply disable the matching provider."""
@@ -53,6 +57,16 @@ class Secrets(BaseModel):
     def status(self) -> dict[str, bool]:
         """Which keys are present (never exposes the values)."""
         return {name.removesuffix("_api_key"): bool(value) for name, value in self.model_dump().items()}
+
+    def format_warnings(self) -> list[str]:
+        """Keys that don't look like their provider's keys (e.g. an OpenAI key in ANTHROPIC_API_KEY)."""
+        warnings = []
+        for name, prefix in KEY_PREFIXES.items():
+            value = getattr(self, name)
+            if value and not value.startswith(prefix):
+                warnings.append(f"{name.upper()} doesn't look like a valid key (expected it to start with "
+                                f"'{prefix}'); that provider will fail with an authentication error.")
+        return warnings
 
 
 class CacheConfig(BaseModel):
@@ -105,8 +119,19 @@ class AppConfig(BaseModel):
     def model_fallbacks(self) -> list[str]:
         return list(self.llm["models"][self.llm_provider].get("fallbacks", []))
 
-    def temperature_for(self, tier: str) -> float:
+    def provider_settings(self) -> dict[str, Any]:
+        """The active provider's block under ``llm.models`` (models plus per-provider options)."""
+        return self.llm["models"][self.llm_provider]
+
+    def temperature_for(self, tier: str) -> float | None:
+        """Sampling temperature, or ``None`` when the provider's models reject non-default values."""
+        if "temperature" in self.provider_settings() and self.provider_settings()["temperature"] is None:
+            return None
         return float(self.llm.get("temperature", {}).get(tier, 0.0))
+
+    def structured_output_method(self) -> str:
+        """``function_calling`` (default) or ``json_schema`` (native structured outputs)."""
+        return self.provider_settings().get("structured_output", "function_calling")
 
     def resolve_path(self, relative: str) -> Path:
         path = Path(relative)

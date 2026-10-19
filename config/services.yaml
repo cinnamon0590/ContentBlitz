@@ -10,6 +10,9 @@ llm:
       smart: claude-sonnet-5-5
       fast: claude-haiku-5-5
       fallbacks: []
+      temperature: null            # Sonnet 5.5 / Haiku 5.5 reject non-default sampling (HTTP 400)
+      structured_output: json_schema   # forced tool calling is a 400 on Sonnet 5.5
+      max_tokens: 16000
     gemini:
       smart: gemini-pro-latest    # alias; gemini-2.5-* are retired for new users
       fast: gemini-3.8-flash
@@ -42,6 +45,8 @@ pricing:
   gpt-4o: [2.50, 10.00]
   gpt-4o-mini: [0.15, 0.60]
   gpt-4.1-mini: [0.40, 1.60]
+  claude-sonnet-5-5: [2.00, 10.00]
+  claude-haiku-5-5: [0.10, 0.50]
   # Models missing from this table are tracked as 'unpriced' (tokens only).
 image_pricing:          # USD per image (approx.)
   gpt-image-1: 0.063            # medium, 1536x1024

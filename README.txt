@@ -52,7 +52,7 @@ API goes down.
 | **Guardrails** | Prompt-injection and policy screens, PII redaction, moderation, citation integrity, tool and revision caps, per-request budget |
 | **UI** | Streamlit with tabs: Chat · Content Dashboard (edit/score/refine) · Research panel · Image gallery · Export · Settings |
 | **Export** | Markdown, HTML, WordPress blocks, TXT, PDF, PNG/JPG, ZIP bundle |
-| **Quality of engineering** | 179 offline tests (~98% coverage), live-API tests, Docker, dev/prod configs, JSON logs, cost tracking |
+| **Quality of engineering** | 185 offline tests (~98% coverage), live-API tests for all three LLM providers, Docker, dev/prod configs, JSON logs, cost tracking |
 
 ---
 
@@ -149,7 +149,7 @@ docker compose up --build
 |---|---|
 | `.env` | API keys: `OPENAI_API_KEY`, `SERPAPI_API_KEY`, `TAVILY_API_KEY`, `PERPLEXITY_API_KEY`, optional `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, LangSmith |
 | `APP_ENV` | `development` (default) or `production` |
-| `LLM_PROVIDER` | `openai` (default), `anthropic`, `gemini`. Install `langchain-anthropic` / `langchain-google-genai` first |
+| `LLM_PROVIDER` | `openai` (default), `anthropic`, `gemini`. No code changes; the matching key must be set. Per-provider quirks (Claude Sonnet 5.5 / Haiku 5.5 reject `temperature` and forced tool calls) are handled in `config/services.yaml` |
 | `config/services.yaml` | Models per provider and tier, fallback models, research and image chains and sizes, pricing table |
 | `config/development.yaml` | Debug logs, in-memory checkpointer, pass threshold 70, guardrail limits, cache TTL |
 | `config/production.yaml` | JSON logs, SQLite checkpointer (memory survives restarts), pass threshold 75 |
@@ -226,10 +226,11 @@ Each agent factory (`make_query_handler`, `make_research_agent`, `make_blog_writ
 ## 8. Testing
 
 ```bash
-pytest                         # 179 offline tests (unit + integration + e2e UI + notebook); no keys needed
+pytest                         # 185 offline tests (unit + integration + e2e UI + notebook); no keys needed
 pytest --cov=src               # coverage report (~98%; web_app UI code is excluded and smoke-tested instead)
 pytest tests/unit/test_agent_research.py      # test one agent on its own
-pytest -m live                 # real API calls (needs .env keys; costs a few cents)
+pytest -m live                 # real API calls (needs .env keys; costs a few cents); includes one full
+                               # LinkedIn turn per alternate provider (Anthropic, Gemini), skipped if its key is missing
 ruff check src tests           # lint
 ```
 
@@ -264,6 +265,7 @@ Step-by-step instructions: [docs/deployment_guide.md](docs/deployment_guide.md).
 |---|---|
 | Yellow banner "OPENAI_API_KEY is not set" | Copy `.env.example` to `.env`, add the key, and restart Streamlit |
 | Report says *"Based on AI model knowledge — not verified"* | No research key, or every provider failed. Add `SERPAPI_API_KEY` or `TAVILY_API_KEY`; check the warnings (they list each provider's error) |
+| Settings shows "🔑 ANTHROPIC_API_KEY doesn't look like a valid key", or `401 invalid x-api-key` with `LLM_PROVIDER=anthropic` | A key from another provider was pasted into that slot (for example an OpenAI `sk-proj-` key). Anthropic keys start with `sk-ant-`; create the right key and restart |
 | `serpapi: HTTP 401` / `Invalid API key` in warnings | The SerpAPI key is wrong or out of credits (100/month free). Tavily and Perplexity take over automatically |
 | Image warning "fallback used → gpt-image-1-mini" | gpt-image-1 needs a verified OpenAI organization. gpt-image-1-mini is the expected default otherwise |
 | Image shows "placeholder" | Every OpenAI image model failed (key, billing, or content policy). See `attempts` in the Images tab |
@@ -274,7 +276,7 @@ Step-by-step instructions: [docs/deployment_guide.md](docs/deployment_guide.md).
 | PDF characters show as `?` | No Unicode TTF font found (Linux). Install `fonts-dejavu-core` (the Docker image includes it) |
 | `ModuleNotFoundError: src` | Run commands from the `contentalchemy/` project root |
 | Stale research results | Results are cached for 30 minutes. Use ⚙️ Settings → *Clear research cache* |
-| `langchain_anthropic` not found | Uncomment the optional provider lines in `requirements.txt` and reinstall |
+| `langchain_anthropic` not found | Reinstall dependencies: `pip install -r requirements.txt` (both alternate providers are included) |
 
 ---
 

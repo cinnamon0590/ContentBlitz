@@ -158,6 +158,7 @@ class ContentBlitz:
         return {
             "llm": self.deps.llm.describe("smart"),
             "keys": self.config.secrets.status(),
+            "key_warnings": self.config.secrets.format_warnings(),
             "research_chain": self.deps.search.available_providers,
             "image_chain": self.deps.images.chain,
             "checkpointer": self.config.checkpointer,

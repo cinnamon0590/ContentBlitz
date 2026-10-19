@@ -28,9 +28,22 @@ research and analysis in one step, so it's reserved for the single `deep_researc
 | | **OpenAI gpt-4o** (smart) | **OpenAI gpt-4o-mini** (fast) | Claude Sonnet / Haiku (optional) | Gemini Pro / Flash (optional) |
 |---|---|---|---|---|
 | Used for | Blog, LinkedIn, report writing; research synthesis | Routing, tool loops, prompt enhancement, critique, brand-voice learning | Drop-in via `LLM_PROVIDER=anthropic` | Drop-in via `LLM_PROVIDER=gemini` |
-| List price (USD per 1M tokens, in/out) | ~2.50 / 10.00 | ~0.15 / 0.60 | see Anthropic pricing | see Google pricing |
+| List price (USD per 1M tokens, in/out) | ~2.50 / 10.00 | ~0.15 / 0.60 | Sonnet 5.5: 2.00 / 10.00 · Haiku 5.5: 0.10 / 0.50 | see Google pricing (not tracked) |
 | Strengths | Reliable structured output, strong long-form quality | Very cheap, fast, good at classification | Strong reasoning and long-form tone (FAQ notes Claude for complex content) | Large free tier for development |
 | Program availability | Provided | Provided | Bring your own key | Bring your own key |
+
+**Measured live, 2026-10-19** (the same request on each provider: "Write a LinkedIn post about why fast
+replies win customers for local bakeries", which runs routing, the research tool loop, synthesis, the LinkedIn
+writer and the quality gate):
+
+| Provider (smart / fast) | Result | LinkedIn quality | Tokens | Tracked cost | Time |
+|---|---|---|---|---|---|
+| Anthropic `claude-sonnet-5-5` / `claude-haiku-5-5` | research + post, no warnings | 100/100 | 31,356 | $0.063 | 106 s |
+| Gemini `gemini-pro-latest` / `gemini-3.8-flash` | research + post, no warnings | 100/100 | 21,310 | not priced | 106 s |
+
+Claude Sonnet 5.5 and Haiku 5.5 reject any `temperature` and forced tool calls; the `anthropic` block in
+`config/services.yaml` handles both (`temperature: null`, `structured_output: json_schema`). Before that fix
+every Claude call failed and the router silently fell back to keyword rules, a gap only the live test caught.
 
 **Tiering impact:** most calls in a request are routing, tool decisions, prompt enhancement and critique. Running
 them on the fast tier keeps the expensive model for the few long-form generations. The usage panel shows actual
