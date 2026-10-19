@@ -166,3 +166,28 @@ class FakeImageClient:
         buf = io.BytesIO()
         Image.new("RGB", (w // 4, h // 4), (10, 120, 200)).save(buf, format="PNG")
         return buf.getvalue()
+
+
+# --------------------------------------------------------------------------------------
+# Content fixtures
+# --------------------------------------------------------------------------------------
+_FILLER = ("Small teams can plan a simple weekly routine. Start with one clear goal and a short list of tasks. "
+           "Write down what worked and what did not. Keep each step small so it is easy to repeat. "
+           "Ask your customers what they need and use their words in your copy. ")
+
+
+def good_blog_markdown(keyword: str = "email marketing") -> str:
+    """~1300-word blog that satisfies the SEO / structure / citation rules."""
+    sections = []
+    for i, heading in enumerate(["Why " + keyword.title() + " Still Works", "Build Your List the Right Way",
+                                 "Write Emails People Open", "Measure What Matters"]):
+        paras = "\n\n".join(_FILLER * 2 for _ in range(3))
+        sections.append(f"## {heading}\n\n{paras} Good {keyword} keeps this simple.\n\n### Quick tip {i + 1}\n\n"
+                        f"Brands that segment lists see 30% more opens [1]. {_FILLER}")
+    faq = (f"## FAQ\n\n### Is {keyword} worth it in 2026?\n\nYes. Most owners see steady results [2].\n\n"
+           f"### How often should I send?\n\nOnce a week is a good start.")
+    intro = (f"# The Small Business Guide to {keyword.title()}\n\n"
+             f"This guide to {keyword} shows small teams how to grow sales with simple steps. "
+             f"You will learn practical {keyword} habits that fit a busy week.")
+    outro = f"## Conclusion\n\nStart small and stay consistent with {keyword}. Get in touch to learn how we can help."
+    return "\n\n".join([intro, *sections, faq, outro])
