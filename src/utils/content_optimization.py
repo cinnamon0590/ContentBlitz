@@ -158,15 +158,29 @@ def check_title(title: str, keyword: str = "") -> list[str]:
 
 
 def fit_meta_description(meta: str, fallback: str = "") -> str:
-    """Trim to ≤160 chars at a word boundary; extend from ``fallback`` text if too short."""
+    """Fit a meta description to 150–160 characters without leaving a fragment.
+
+    Too short: append whole sentences from ``fallback`` that fit (a shorter, natural description beats one that
+    ends mid-sentence, such as "...start today! In the bustling world…"). Too long: cut at the last sentence end
+    from 120 characters on (a complete 137-character description beats a 155-character fragment), otherwise at a
+    word boundary with an ellipsis.
+    """
     lo, hi = BLOG_TARGETS["meta_description"]
     meta = re.sub(r"\s+", " ", meta).strip()
     if len(meta) < lo and fallback:
-        extra = strip_markdown(fallback)
-        meta = f"{meta} {extra}".strip() if meta else extra
+        for sentence in re.split(r"(?<=[.!?])\s+", re.sub(r"\s+", " ", strip_markdown(fallback)).strip()):
+            candidate = f"{meta} {sentence}".strip()
+            if sentence and len(candidate) <= hi:
+                meta = candidate
+                if len(meta) >= lo:
+                    break
     if len(meta) > hi:
-        cut = meta[: hi - 1].rsplit(" ", 1)[0].rstrip(",;:-")
-        meta = cut + "…"
+        window = meta[:hi]
+        end = max(window.rfind(". "), window.rfind("! "), window.rfind("? "), -1)
+        if end + 1 >= lo - 30:
+            meta = window[: end + 1]
+        else:
+            meta = meta[: hi - 1].rsplit(" ", 1)[0].rstrip(",;:-") + "…"
     return meta
 
 

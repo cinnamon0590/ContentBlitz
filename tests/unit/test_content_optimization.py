@@ -30,8 +30,25 @@ def test_meta_description_check_and_fit():
     long = "word " * 60
     fitted = co.fit_meta_description(long)
     assert len(fitted) <= 160 and fitted.endswith("…")
-    extended = co.fit_meta_description("Short meta.", fallback="More context about the topic. " * 5)
-    assert len(extended) >= 150
+    sentences = ("Build your list at the till with a simple sign-up card. Send one helpful email each week and "
+                 "track what works. Share seasonal specials with subscribers first.")
+    extended = co.fit_meta_description("Email marketing for bakeries, made simple.", fallback=sentences)
+    assert 150 <= len(extended) <= 160 and extended.endswith(".")  # whole sentences only
+
+
+def test_meta_description_never_ends_mid_sentence():
+    """Regression: padding with raw first-paragraph text produced "...start today! In the bustling world…"."""
+    meta = ("Explore local bakery email marketing trends for 2026. Learn practical tips to boost engagement and sales. "
+            "Get inspired and start today!")
+    intro = ("In the bustling world of local bakeries, staying connected with your customers is key to thriving in "
+             "2026. Local bakery email marketing is increasingly a cornerstone.")
+    fitted = co.fit_meta_description(meta, fallback=intro)
+    assert fitted == meta  # no sentence fits, so the natural description is kept
+    long = ("Bakery email marketing made simple. Build your list, write emails people open, and measure results. "
+            "Start this week with three easy steps. Then keep going every single week for steady growth.")
+    trimmed = co.fit_meta_description(long)
+    assert trimmed.endswith("three easy steps.") and len(trimmed) <= 160  # cut at a sentence end, no fragment
+    assert co.fit_meta_description("word " * 60).endswith("…")  # no sentence end at all: word boundary + ellipsis
 
 
 def test_slugify():
