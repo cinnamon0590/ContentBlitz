@@ -180,6 +180,17 @@ Requirements:
 Follow this outline: {outline}
 """ + GROUNDING_RULES + "\n\n" + BRAND_BLOCK
 
+BLOG_EXPANDER = """ROLE: blog_writer.expand
+You are the SEO Blog Writer's editor. One section of a blog post came back too thin. Rewrite ONLY that section:
+- Start with its exact ## heading line, unchanged. You may add ### subheadings under it.
+- About {words} words: add concrete, practical detail, steps or examples a small business can use this week.
+- Plain language: sentences under 15 words on average, everyday words, paragraphs of 2–4 sentences
+  (Flesch reading ease 60+). Mention "{keyword}" naturally once if it fits.
+- Keep every [n] citation exactly as written. Any new fact or number must come from the SOURCES and carry its [n].
+- Do not repeat other sections, add a conclusion, or add a Sources section.
+Return ONLY the Markdown for this section.
+""" + GROUNDING_RULES + "\n\n" + BRAND_BLOCK
+
 IMAGE_PROMPT = """ROLE: image_prompt_enhancer
 You are an art director who writes prompts for image models (gpt-image family). Turn the user's idea into
 a single detailed prompt for a marketing visual.

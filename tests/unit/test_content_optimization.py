@@ -44,6 +44,8 @@ def test_uncited_statistics():
           "## Sources\n\nSomething 99% here.")
     flagged = co.uncited_statistics(md)
     assert flagged == ["Sales rose 40% last year."]
+    assert co.uncited_statistics("In 2026, the focus is on personalization.") == []  # a year is not a statistic
+    assert co.uncited_statistics("Since 2020, opens grew 25%.") == ["Since 2020, opens grew 25%."]
     assert co.citation_ids("a [1] b [12]") == {1, 12}
 
 

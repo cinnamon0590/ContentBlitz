@@ -178,3 +178,46 @@ def test_content_strategist_adds_title_and_handles_llm_failure(make_deps, config
     deps.llm = LLMService(config, chat_models={"smart": FailingChatModel()})
     out = make_content_strategist(deps)(state)
     assert any("unavailable" in w for w in out["warnings"]) and out["report"]["markdown"].startswith("# Research Brief")
+
+
+# ---- Blog: section-by-section expansion of short drafts -----------------------------------
+SHORT_DRAFT = ("# Email Marketing Guide\n\nShort intro about email marketing. Too brief to rank.\n\n"
+               "## Build Your List\n\nAsk at the till [1].\n\n## Write Emails People Open\n\nKeep it short.\n\n"
+               "## FAQ\n\n### How often?\n\nWeekly.\n\n## Conclusion\n\nGet in touch to learn how we can help.")
+FILLER = "Small teams can plan a simple weekly routine and keep each step easy to repeat. " * 40
+
+
+def _grow_section(messages):
+    """Fake editor: echo the section's heading, then add plain-language detail."""
+    section = messages[-1].content.split("SECTION TO EXPAND:\n", 1)[1]
+    heading, _, rest = section.partition("\n")
+    return f"{heading}\n\n{rest.strip()} {FILLER}"
+
+
+def _blog_state():
+    return {"request": {"intent": "blog", "topic": "t", "target_keyword": "email marketing", "refine_target": "blog"},
+            "blog": {"title": "x", "markdown": "# x"}}
+
+
+def test_short_blog_draft_is_expanded_section_by_section(make_deps):
+    roles = default_roles()
+    roles["blog_writer"] = {**roles["blog_writer"], "markdown": SHORT_DRAFT}
+    asked = []
+    roles["blog_writer.expand"] = lambda m: (asked.append(m[-1].content), _grow_section(m))[1]
+    blog = BlogPost.model_validate(make_blog_writer(make_deps(roles))(_blog_state())["blog"])
+    assert len(asked) == 2  # the two body sections; FAQ and Conclusion are left alone
+    assert all("Build Your List" in a or "Write Emails People Open" in a for a in asked)
+    assert blog.markdown.count("Small teams can plan") >= 80 and "Ask at the till" in blog.markdown  # [1] is scrubbed: no research, no valid ids
+    assert "### How often?\n\nWeekly." in blog.markdown
+    assert any("editing pass expanded it" in n for n in blog.provenance.notes)
+
+
+def test_bad_expansions_keep_the_original(make_deps):
+    for reply in ("Sure! Here is a longer version." + FILLER,  # heading not kept
+                  lambda m: m[-1].content.split("SECTION TO EXPAND:\n", 1)[1]):  # not longer
+        roles = default_roles()
+        roles["blog_writer"] = {**roles["blog_writer"], "markdown": SHORT_DRAFT}
+        roles["blog_writer.expand"] = reply
+        blog = BlogPost.model_validate(make_blog_writer(make_deps(roles))(_blog_state())["blog"])
+        assert "Too brief to rank" in blog.markdown and "Small teams can plan" not in blog.markdown
+        assert not any("expanded" in n for n in blog.provenance.notes)

@@ -24,8 +24,9 @@ BLOG_TARGETS = {
 LINKEDIN_TARGETS = {"chars": (1300, 1600), "hashtags": (8, 12), "hook_max_chars": 210, "max_paragraph_chars": 280}
 
 CITATION_PATTERN = re.compile(r"\[(\d{1,3})\]")
-_STAT_PATTERN = re.compile(r"(\d+(?:\.\d+)?\s?%|\$\s?\d|\b\d{1,3}(?:,\d{3})+\b|\b\d+(?:\.\d+)?\s?(?:million|billion|percent|x)\b"
-                           r"|\b(?:19|20)\d{2}\b)", re.I)
+# Percentages, money, large counts and multipliers. A bare year ("In 2026, ...") is a date, not a statistic.
+_STAT_PATTERN = re.compile(r"(\d+(?:\.\d+)?\s?%|\$\s?\d|\b\d{1,3}(?:,\d{3})+\b|\b\d+(?:\.\d+)?\s?(?:million|billion|percent|x)\b)",
+                           re.I)
 _EMOJI_PATTERN = re.compile("[\U0001F300-\U0001FAFF☀-➿]")
 
 

@@ -195,7 +195,9 @@ class QualityValidator:
         read = co.readability(body)
         readability_score = _band(read["flesch_reading_ease"], brand.target_reading_ease, 100, 40)
         if readability_score < 80:
-            suggestions.append("Shorten sentences and use simpler words to improve readability.")
+            suggestions.append(f"Reading ease is {read['flesch_reading_ease']:.0f}; the brand targets "
+                               f"{brand.target_reading_ease:.0f}+. Use shorter sentences (under 15 words) and "
+                               "everyday words.")
 
         uncited = co.uncited_statistics(md)
         cited = co.citation_ids(body)

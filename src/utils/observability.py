@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import logging
 import sys
+import threading
 import time
 from collections import defaultdict
 from typing import Any
@@ -54,7 +55,10 @@ def get_logger(name: str = "") -> logging.Logger:
 
 
 class CostTracker(BaseCallbackHandler):
-    """Accumulates token usage and estimated cost. Call :meth:`reset` per request."""
+    """Accumulates token usage and estimated cost. Call :meth:`reset` per request.
+
+    Thread-safe: some agents make LLM calls in parallel (the blog writer's section expansion).
+    """
 
     def __init__(
         self,
@@ -65,6 +69,7 @@ class CostTracker(BaseCallbackHandler):
         self.pricing = pricing or {}
         self.image_pricing = image_pricing or {}
         self.search_pricing = search_pricing or {}
+        self._lock = threading.Lock()
         self.reset()
 
     def reset(self) -> None:
@@ -96,19 +101,23 @@ class CostTracker(BaseCallbackHandler):
 
     # ---- manual recording ---------------------------------------------------------
     def record_llm(self, model: str, input_tokens: int, output_tokens: int) -> None:
-        entry = self.tokens[model]
-        entry["input"] += int(input_tokens)
-        entry["output"] += int(output_tokens)
-        entry["calls"] += 1
+        with self._lock:
+            entry = self.tokens[model]
+            entry["input"] += int(input_tokens)
+            entry["output"] += int(output_tokens)
+            entry["calls"] += 1
 
     def record_search(self, provider: str) -> None:
-        self.searches[provider] += 1
+        with self._lock:
+            self.searches[provider] += 1
 
     def record_image(self, model: str) -> None:
-        self.images[model] += 1
+        with self._lock:
+            self.images[model] += 1
 
     def record_cache_hit(self) -> None:
-        self.cache_hits += 1
+        with self._lock:
+            self.cache_hits += 1
 
     # ---- reporting ---------------------------------------------------------------
     def _price(self, model: str) -> list[float] | None:

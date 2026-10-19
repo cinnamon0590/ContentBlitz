@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
@@ -75,6 +76,49 @@ def _strip_existing_provenance(markdown: str) -> str:
     return markdown.split("## Sources & Provenance")[0].rstrip()
 
 
+_NOT_EXPANDED = re.compile(r"^##\s+(faq|frequently asked|conclusion|final thoughts|wrapping up|sources)\b", re.I)
+
+
+def expand_short_draft(deps: AgentDeps, brand, markdown: str, keyword: str, sources) -> str | None:
+    """Grow a short draft to long-form length, one ``##`` section at a time.
+
+    The smart model writes roughly 700 words per reply however much it is asked for, so a whole-post rewrite
+    cannot reach 1,200+ words. Each body section (not the FAQ or conclusion) gets its own short, parallel request
+    for about 250 more words. A section is replaced only if the reply keeps its exact heading and is longer;
+    the post is returned only if it grew by at least 20%, otherwise ``None`` (keep the original).
+    """
+    current = co.word_count(markdown)
+    parts = re.split(r"(?m)^(?=## )", markdown)
+    body = [i for i, part in enumerate(parts) if i > 0 and not _NOT_EXPANDED.match(part)]
+    shortfall = co.BLOG_TARGETS["min_words"] + 150 - current
+    if not body or shortfall <= 0:
+        return None
+    extra = max(150, shortfall // len(body))
+    headings = " · ".join(p.split("\n", 1)[0].lstrip("# ").strip() for p in parts[1:])
+    evidence = format_sources(sources)
+
+    def grow(index: int) -> str:
+        section = parts[index].rstrip()
+        heading = section.split("\n", 1)[0].strip()
+        system = prompts.with_brand(prompts.BLOG_EXPANDER, brand, words=co.word_count(section) + extra,
+                                    keyword=keyword)
+        user = f"POST OUTLINE: {headings}\n\nSOURCES:\n{evidence}\n\nSECTION TO EXPAND:\n{section}"
+        try:
+            reply = deps.llm.text(system, user, tier="smart").strip()
+        except RuntimeError:
+            return parts[index]
+        reply = re.sub(r"^```(?:markdown)?\s*|\s*```$", "", reply).strip()
+        if reply.split("\n", 1)[0].strip() != heading or co.word_count(reply) <= co.word_count(section):
+            return parts[index]
+        return reply + "\n\n"
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        for index, grown in zip(body, pool.map(grow, body), strict=True):
+            parts[index] = grown
+    expanded = "".join(parts).strip()
+    return expanded if co.word_count(expanded) >= 1.2 * current else None
+
+
 def compose_blog(deps: AgentDeps, state: ContentState, keyword_payloads: list[dict]) -> dict:
     brand = brand_of(state)
     request = request_of(state)
@@ -116,7 +160,17 @@ def compose_blog(deps: AgentDeps, state: ContentState, keyword_payloads: list[di
         draft = BlogDraft(title=h1.group(1).strip() if h1 else (request.topic or keyword).title(), markdown=markdown)
         warnings.append("Structured output failed; blog metadata was derived automatically.")
 
+    expansion_note = ""
+    drafted_words = co.word_count(draft.markdown)
+    if drafted_words < co.BLOG_TARGETS["min_words"]:
+        if expanded := expand_short_draft(deps, brand, draft.markdown, keyword, sources):
+            draft.markdown = expanded
+            expansion_note = (f"The first draft came back at {drafted_words} words; an editing pass expanded it to "
+                              f"{co.word_count(expanded)} words in plainer language.")
+
     markdown, notes = scrub_body(draft.markdown, registry, valid_ids)
+    if expansion_note:
+        notes.append(expansion_note)
     markdown = re.sub(r"^#\s+.+\n+", "", markdown.lstrip(), count=1) if markdown.lstrip().startswith("# ") else markdown
     markdown = re.sub(r"^#\s+", "## ", markdown, flags=re.M)  # demote any extra H1s
     title = draft.title.strip().strip("#").strip()

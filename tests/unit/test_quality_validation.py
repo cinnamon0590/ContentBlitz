@@ -93,3 +93,11 @@ def test_learn_brand_voice(make_llm):
     assert profile.required_phrases == ["baked with love"] and profile.sample_text
     unchanged = learn_brand_voice("Sample text here.", BrandProfile(), None, "x")
     assert unchanged.tone == BrandProfile().tone
+
+
+def test_readability_feedback_gives_the_numbers():
+    dense = ("Notwithstanding multifaceted organizational considerations, comprehensive omnichannel personalization "
+             "methodologies necessitate sophisticated infrastructural investments. ") * 40
+    report = QualityValidator(70).score_blog(make_blog(md=f"# Email marketing\n\n{dense}"), BRAND)
+    tip = next(s for s in report.suggestions if s.startswith("Reading ease is"))
+    assert "the brand targets 60+" in tip and "under 15 words" in tip
