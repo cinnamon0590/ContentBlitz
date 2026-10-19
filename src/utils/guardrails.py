@@ -42,8 +42,15 @@ INJECTION_PATTERNS = [
     r"\bbegin\s+system\s+prompt\b",
 ]
 
+_REVIEWS = r"(reviews?|testimonials?|ratings?)"
 POLICY_PATTERNS = {
-    "fake_reviews": r"\b(fake|fabricated|made[- ]up|false)\s+(customer\s+)?(reviews?|testimonials?|ratings?)\b",
+    # "fake reviews", but also "fake five-star customer reviews" (up to four words in between)
+    "fake_reviews": rf"\b(fake|fabricated|made[- ]up|false|phony|bogus|invented)\b(?:[\s-]+[\w-]+){{0,4}}?[\s-]+{_REVIEWS}\b",
+    # reviews written in customers' voices, or written to be posted on review sites
+    "reviews_as_customers": rf"\b{_REVIEWS}\b.{{0,60}}\b(as if (they were|written by|from)|pretending to be|posing as|in the "
+                            r"voice of|signed as)\b.{0,20}\b(customers?|clients?|guests?|patients?|buyers?)\b",
+    "reviews_for_review_sites": rf"\b(write|generate|create|draft|make)\b.{{0,40}}\b{_REVIEWS}\b.{{0,40}}\b(post|publish|"
+                                r"upload|submit)\b.{0,25}\b(google|yelp|tripadvisor|amazon|facebook|trustpilot|etsy)\b",
     "impersonation": r"\b(pretend|pose|posing)\s+(to\s+be|as)\s+(a\s+)?(real\s+)?(customer|competitor|doctor|lawyer)\b",
     "competitor_defamation": r"\b(defame|smear|spread\s+(rumou?rs|lies))\b.*\bcompetitor",
 }
@@ -96,8 +103,18 @@ def detect_injection(text: str) -> list[str]:
     return [p for p in INJECTION_PATTERNS if re.search(p, text, re.I | re.M)]
 
 
+# Asking how to deal with fake reviews is legitimate and must not be blocked.
+DEFENSIVE_REVIEW_CONTEXT = re.compile(
+    r"\b(spot|spotting|detect|identify|recogni[sz]e|respond(ing)? to|reply(ing)? to|report(ing)?|flag(ging)?|remove|"
+    r"removing|deal(ing)? with|handle|handling|fight|combat|protect|against|about|policy on|stop)\b(?:\W+\w+){0,3}\W+"
+    r"(fake|fabricated|false|bogus|phony)\b", re.I)
+
+
 def detect_policy_violation(text: str) -> list[str]:
-    return [name for name, p in POLICY_PATTERNS.items() if re.search(p, text, re.I)]
+    hits = [name for name, p in POLICY_PATTERNS.items() if re.search(p, text, re.I)]
+    if hits == ["fake_reviews"] and DEFENSIVE_REVIEW_CONTEXT.search(text):
+        return []  # e.g. "how do I respond to fake reviews?"
+    return hits
 
 
 # --------------------------------------------------------------------------------------
