@@ -1,0 +1,20 @@
+env: production
+log_level: INFO
+log_json: true
+output_dir: outputs
+cache:
+  enabled: true
+  dir: .cache/research
+  ttl_seconds: 1800
+checkpointer: sqlite         # durable conversation memory across restarts
+sqlite_path: .cache/checkpoints.sqlite
+guardrails:
+  max_input_chars: 4000
+  use_moderation_api: true
+  max_tool_iterations: 6
+  max_deep_research_calls: 1
+  max_revisions: 2
+  request_budget_usd: 0.50
+  recursion_limit: 40
+quality:
+  pass_threshold: 75

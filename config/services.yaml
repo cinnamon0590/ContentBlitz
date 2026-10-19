@@ -1,0 +1,54 @@
+# Provider catalogue, fallback chains, and pricing (shared by all environments).
+llm:
+  provider: openai               # overridden by LLM_PROVIDER env var
+  models:
+    openai:
+      smart: gpt-4o              # long-form writing, research synthesis
+      fast: gpt-4o-mini          # routing, scoring, prompt enhancement
+      fallbacks: [gpt-4.1-mini]  # tried if the primary model errors
+    anthropic:
+      smart: claude-sonnet-5-5
+      fast: claude-haiku-5-5
+      fallbacks: []
+    gemini:
+      smart: gemini-2.5-pro
+      fast: gemini-2.5-flash
+      fallbacks: []
+  temperature:
+    smart: 0.7
+    fast: 0.0
+  request_timeout_s: 60
+  max_retries: 2
+
+research:
+  chain: [serpapi, tavily, perplexity]   # tried in order; first success wins
+  results_per_query: 5
+  max_queries: 4
+  perplexity_model: sonar-pro
+  request_timeout_s: 25
+
+images:
+  chain: [gpt-image-1, dall-e-3, dall-e-2, placeholder]
+  sizes:
+    gpt-image-1: 1536x1024
+    dall-e-3: 1792x1024
+    dall-e-2: 1024x1024
+  min_dimension_px: 256
+
+# USD per 1M tokens (input, output) — used for cost tracking only. Update as prices change.
+pricing:
+  gpt-4o: [2.50, 10.00]
+  gpt-4o-mini: [0.15, 0.60]
+  gpt-4.1-mini: [0.40, 1.60]
+  # Models missing from this table are tracked as 'unpriced' (tokens only).
+  gemini-2.5-pro: [1.25, 10.00]
+  gemini-2.5-flash: [0.30, 2.50]
+image_pricing:          # USD per image (approx.)
+  gpt-image-1: 0.063
+  dall-e-3: 0.080
+  dall-e-2: 0.020
+  placeholder: 0.0
+search_pricing:         # USD per call (approx.; free tiers first)
+  serpapi: 0.0
+  tavily: 0.0
+  perplexity: 0.005

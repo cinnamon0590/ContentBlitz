@@ -1,0 +1,33 @@
+# Secrets — never commit API keys
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+
+# Runtime artifacts
+outputs/*
+!outputs/.gitkeep
+.cache/
+*.sqlite
+*.sqlite-*
+*.db
+.langgraph_api/
+
+# OS / editors
+.DS_Store
+.vscode/
+.idea/

@@ -1,0 +1,46 @@
+# ContentBlitz / ContentAlchemy — runtime + dev dependencies
+# Verified on Python 3.14 (also expected to work on 3.11–3.13).
+
+# --- Orchestration / LLM ---
+langgraph>=1.2,<2
+langgraph-checkpoint-sqlite>=3.1
+langchain>=1.4
+langchain-core>=1.6
+langchain-openai>=1.7
+openai>=3.0
+
+# --- Optional alternate LLM providers (uncomment + set key to enable) ---
+# langchain-anthropic>=1.0
+# langchain-google-genai>=3.0
+
+# --- Config / validation ---
+pydantic>=2.10
+pydantic-settings>=2.6
+python-dotenv>=1.0
+PyYAML>=6.0
+
+# --- HTTP / resilience ---
+requests>=2.32
+tenacity>=9.0
+
+# --- Content quality / export / images ---
+textstat>=0.7
+Markdown>=3.7
+fpdf2>=2.8
+pillow>=11.0
+matplotlib>=3.9
+
+# --- UI ---
+streamlit>=1.40
+
+# --- Dev / test ---
+pytest>=8.3
+pytest-cov>=6.0
+pytest-mock>=3.14
+ruff>=0.8
+nbformat>=5.10
+nbclient>=0.10
+ipykernel>=6.29
+
+# --- Optional: local LangGraph Studio (`langgraph dev`) ---
+# langgraph-cli[inmem]>=0.4
