@@ -6,7 +6,7 @@ Pipeline:
    lighting and mood, using the brand's palette and visual style. It also writes accessible
    alt text. If the LLM fails, a deterministic template is used instead.
 2. **Safety**: the enhanced prompt goes through the moderation guardrail.
-3. **Generation with fallback**: gpt-image-1 → gpt-image-1-mini → branded Pillow placeholder.
+3. **Generation with fallback**: gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → branded Pillow placeholder.
 4. **Validation & storage**: Pillow decodes and size-checks the image, which is saved as PNG to
    ``outputs/images/`` next to a JSON metadata file (prompts, provider, attempts, provenance).
 """

@@ -17,12 +17,12 @@ contributors and AI coding agents. For setup, see `README.md` / `README.txt`. Fo
 | Capstone | Project 2 — ContentBlitz: Content Marketing Agent (Applied Agentic AI for SWEs) |
 | Orchestration | LangGraph `StateGraph` (router + agent ↔ ToolNode loops + checkpointer) |
 | Agents | Query Handler · Deep Research · SEO Blog Writer · LinkedIn Writer · Image Generator · Content Strategist |
-| LLM | OpenAI `gpt-4o` (writing) / `gpt-4o-mini` (routing, scoring); fallback `gpt-4.1-mini`; Anthropic/Gemini switchable |
+| LLM | OpenAI `gpt-4o` (writing) / `gpt-4o-mini` (routing, scoring); fallback `gpt-4.1-mini`; Anthropic/Gemini switchable (Gemini: `gemini-pro-latest` / `gemini-3.8-flash`) |
 | Research | SerpAPI → Tavily → Perplexity Agent API (fallback chain, 30-min cache, stale-cache outage fallback) |
-| Images | gpt-image-1 → gpt-image-1-mini → Pillow branded placeholder |
+| Images | gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → Pillow branded placeholder |
 | Memory | `InMemorySaver` (dev) / `SqliteSaver` (prod) keyed by `thread_id` |
 | UI | Streamlit: Chat · Content Dashboard · Research · Images · Export · Settings |
-| Tests | 150 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live` |
+| Tests | 154 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live` |
 
 ### Repository map
 
@@ -147,7 +147,7 @@ class AgentDeps:
     config: AppConfig          # YAML + env settings
     llm: LLMService            # tiered LLM access with fallbacks (smart / fast)
     search: SearchChain        # SerpAPI → Tavily → Perplexity, cached
-    images: ImageChain         # gpt-image-1 → gpt-image-1-mini → placeholder
+    images: ImageChain         # gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → placeholder
     validator: QualityValidator
     tracker: CostTracker       # tokens / searches / images → USD
     moderator: ModerationClient | None
@@ -225,7 +225,7 @@ node({"user_input": "Write an SEO blog about email marketing for bakeries"})
 | | |
 |---|---|
 | **Purpose** | Marketing visuals with prompt optimization |
-| **Pipeline** | (1) Art-director **prompt enhancement**: subject, composition with negative space, lighting, lens, mood, brand palette and visual style, no text or logos, plus accessible alt text (`fast` model, `IMAGE_PROMPT`). (2) **Moderation** of the enhanced prompt. (3) **Fallback chain** gpt-image-1 → gpt-image-1-mini → Pillow branded placeholder. (4) **Pillow validation** (decodable, minimum 256 px), normalized to PNG. (5) Saved to `outputs/images/<timestamp>-<slug>.png` with a `.json` metadata file |
+| **Pipeline** | (1) Art-director **prompt enhancement**: subject, composition with negative space, lighting, lens, mood, brand palette and visual style, no text or logos, plus accessible alt text (`fast` model, `IMAGE_PROMPT`). (2) **Moderation** of the enhanced prompt. (3) **Fallback chain** gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → Pillow branded placeholder. (4) **Pillow validation** (decodable, minimum 256 px), normalized to PNG. (5) Saved to `outputs/images/<timestamp>-<slug>.png` with a `.json` metadata file |
 | **Reads / writes** | Reads `request.image_prompt`, `brand`, `blog`/`linkedin` (campaign context). Writes `image`, `images` (gallery), `pending_formats` |
 | **Fallbacks** | If enhancement fails, a deterministic template prompt is used. Each provider failure is recorded in `attempts` and in provenance notes. The placeholder never fails |
 | **Note** | gpt-image-1 needs a verified OpenAI organization. Without one, gpt-image-1-mini becomes the default automatically. DALL-E 2/3 are retired by OpenAI. Quality is pinned to `medium` (the API default `high` costs ~4×) |
@@ -292,7 +292,7 @@ records a warning and moves on. Users can also edit content in the **Content Das
 
 - **LLM**: smart/fast tiers. Fallback models via `LLMService.invoke`, plus bound fallbacks for tool loops. Provider switch with `LLM_PROVIDER`.
 - **Research**: `SearchChain` tries SerpAPI → Tavily → Perplexity, then stale cache, then an explicit offline outcome. Results are cached for 30 minutes.
-- **Images**: `ImageChain` (3 levels; the last one never fails).
+- **Images**: `ImageChain` (4 levels across two providers, OpenAI and Google; the last one never fails).
 - **Structured output**: native function calling first, then JSON-mode parsing, then deterministic fallbacks.
 - **Observability**: `CostTracker` (tokens, searches, images, cache hits, USD per request, shown in the UI), JSON logs in production, optional LangSmith tracing.
 

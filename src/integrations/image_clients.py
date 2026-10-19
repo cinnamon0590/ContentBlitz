@@ -1,9 +1,13 @@
 """Image generation clients and the image fallback chain.
 
-Chain (``config/services.yaml``): ``gpt-image-1 → gpt-image-1-mini → placeholder``.
+Chain (``config/services.yaml``):
+``gpt-image-1 → gpt-image-1-mini → gemini-2.5-flash-image → placeholder``.
 
 * ``gpt-image-1`` needs a verified OpenAI organization. If the key isn't
   verified, the call fails and the chain moves on to ``gpt-image-1-mini``.
+* ``gemini-2.5-flash-image`` (Google) is the cross-provider fallback: an OpenAI
+  outage or billing problem no longer leaves only the placeholder. It needs a
+  ``GOOGLE_API_KEY`` on a billing-enabled project (the free tier allows 0 images).
 * DALL-E 2/3 are retired by OpenAI and no longer part of the chain.
 * ``placeholder`` is a branded, Pillow-rendered card (never fails), so the
   workflow always returns an image and records why the real providers failed.
@@ -20,13 +24,17 @@ import textwrap
 from dataclasses import dataclass, field
 from typing import Any
 
+import requests
 from PIL import Image, ImageDraw, ImageFont
 
+from src.integrations import request_json
 from src.utils.observability import CostTracker, get_logger
 
 log = get_logger("images")
 
 PROMPT_LIMIT = 32000  # gpt-image family
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+GEMINI_ASPECT_RATIOS = ("1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9")
 
 
 class ImageGenerationError(RuntimeError):
@@ -94,6 +102,74 @@ class OpenAIImageClient:
 
             return requests.get(url, timeout=60).content
         raise ImageGenerationError("empty image response")
+
+
+def aspect_ratio(size: str) -> str:
+    """'1536x1024' → '3:2': the closest aspect ratio Gemini supports (it takes ratios, not pixel sizes)."""
+    try:
+        width, height = (int(x) for x in size.lower().split("x"))
+    except ValueError:
+        return size if size in GEMINI_ASPECT_RATIOS else "1:1"
+    target = width / height
+
+    def distance(ratio: str) -> float:
+        w, h = (int(x) for x in ratio.split(":"))
+        return abs(w / h - target)
+
+    return min(GEMINI_ASPECT_RATIOS, key=distance)
+
+
+class GeminiImageClient:
+    """Google Gemini image models over the REST API (no SDK needed)."""
+
+    def __init__(self, api_key: str | None, timeout: float = 120, session: requests.Session | None = None):
+        self.api_key = api_key
+        self.timeout = timeout
+        self.session = session or requests.Session()
+
+    @property
+    def available(self) -> bool:
+        return bool(self.api_key)
+
+    def generate(self, model: str, prompt: str, size: str) -> bytes:
+        if not self.available:
+            raise ImageGenerationError("GOOGLE_API_KEY is not set")
+        data = request_json(
+            "gemini", "POST", GEMINI_URL.format(model=model), session=self.session, timeout=self.timeout,
+            headers={"x-goog-api-key": self.api_key},
+            json={"contents": [{"parts": [{"text": prompt[:PROMPT_LIMIT]}]}],
+                  "generationConfig": {"responseModalities": ["IMAGE"],
+                                       "imageConfig": {"aspectRatio": aspect_ratio(size)}}},
+        )
+        candidate = (data.get("candidates") or [{}])[0]
+        for part in (candidate.get("content") or {}).get("parts") or []:
+            inline = part.get("inlineData") or part.get("inline_data")
+            if inline and inline.get("data"):
+                return base64.b64decode(inline["data"])
+        reason = candidate.get("finishReason") or (data.get("promptFeedback") or {}).get("blockReason") or "no image"
+        raise ImageGenerationError(f"Gemini returned no image ({reason})")
+
+
+class ImageClients:
+    """Routes each model in the chain to its provider's client (``gemini-*`` → Google, else OpenAI)."""
+
+    def __init__(self, openai: Any, google: Any = None):
+        self.openai = openai
+        self.google = google
+
+    @property
+    def available(self) -> bool:
+        return bool(self.openai.available or (self.google and self.google.available))
+
+    def for_model(self, model: str) -> Any:
+        if model.startswith("gemini"):
+            if self.google is None:
+                raise ImageGenerationError("no Google image client configured")
+            return self.google
+        return self.openai
+
+    def generate(self, model: str, prompt: str, size: str) -> bytes:
+        return self.for_model(model).generate(model, prompt, size)
 
 
 def _hex_to_rgb(value: str) -> tuple[int, int, int]:

@@ -11,8 +11,8 @@ llm:
       fast: claude-haiku-5-5
       fallbacks: []
     gemini:
-      smart: gemini-2.5-pro
-      fast: gemini-2.5-flash
+      smart: gemini-pro-latest    # alias; gemini-2.5-* are retired for new users
+      fast: gemini-3.8-flash
       fallbacks: []
   temperature:
     smart: 0.7
@@ -28,11 +28,12 @@ research:
   request_timeout_s: 25
 
 images:
-  chain: [gpt-image-1, gpt-image-1-mini, placeholder]   # DALL-E 2/3 are retired
+  chain: [gpt-image-1, gpt-image-1-mini, gemini-2.5-flash-image, placeholder]   # DALL-E 2/3 are retired
   quality: medium                     # the API defaults to "high" (~4x the cost)
   sizes:
     gpt-image-1: 1536x1024
     gpt-image-1-mini: 1536x1024
+    gemini-2.5-flash-image: 1536x1024   # sent as the closest aspect ratio (3:2); returns 1248x832
   min_dimension_px: 256
 
 # USD per 1M tokens (input, output) — used for cost tracking only. Update as prices change.
@@ -41,11 +42,10 @@ pricing:
   gpt-4o-mini: [0.15, 0.60]
   gpt-4.1-mini: [0.40, 1.60]
   # Models missing from this table are tracked as 'unpriced' (tokens only).
-  gemini-2.5-pro: [1.25, 10.00]
-  gemini-2.5-flash: [0.30, 2.50]
 image_pricing:          # USD per image (approx.)
   gpt-image-1: 0.063            # medium, 1536x1024
   gpt-image-1-mini: 0.015       # medium, 1536x1024
+  gemini-2.5-flash-image: 0.039 # ~1290 output tokens at $30 / 1M
   placeholder: 0.0
 search_pricing:         # USD per call (approx.; free tiers first)
   serpapi: 0.0

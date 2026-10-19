@@ -57,7 +57,7 @@ def test_live_linkedin_post(app):
 def test_live_image_with_fallback_chain(app):
     result = app.run("Make an image of a cozy coffee shop at sunrise", thread_id="live-3")
     image = result.artifacts["image"]
-    assert image["provider"] in ("gpt-image-1", "gpt-image-1-mini", "placeholder")
+    assert image["provider"] in ("gpt-image-1", "gpt-image-1-mini", "gemini-2.5-flash-image", "placeholder")
     assert os.path.exists(image["path"])
 
 

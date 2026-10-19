@@ -124,7 +124,7 @@ def test_image_generator_fallback_chain_and_enhancer_failure(make_deps):
 
 
 def test_image_generator_placeholder_and_moderation(make_deps):
-    deps = make_deps(image_fail={"gpt-image-1", "gpt-image-1-mini"})
+    deps = make_deps(image_fail={"gpt-image-1", "gpt-image-1-mini", "gemini-2.5-flash-image"})
     out = make_image_generator(deps)({"request": {"intent": "image", "topic": "bakery"}})
     assert out["image"]["provider"] == "placeholder"
 

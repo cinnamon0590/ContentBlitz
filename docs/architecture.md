@@ -24,7 +24,7 @@ flowchart TB
     subgraph SV["Services (src/integrations) — via AgentDeps"]
         LLM[LLMService<br/>smart/fast tiers + fallbacks]
         SC[SearchChain<br/>SerpAPI → Tavily → Perplexity + TTL cache]
-        IC[ImageChain<br/>gpt-image-1 → gpt-image-1-mini → placeholder]
+        IC[ImageChain<br/>gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → placeholder]
         MOD[Moderation]
     end
     subgraph UT["Pipeline utilities (src/utils)"]

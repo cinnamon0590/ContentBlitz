@@ -38,21 +38,25 @@ tokens and estimated cost per request.
 
 ## 3. Image models
 
-| | **gpt-image-1** | **gpt-image-1-mini** | Pillow placeholder |
-|---|---|---|---|
-| Quality / prompt adherence | Highest | Good (draft quality) | Branded gradient card |
-| Requirements | **Verified OpenAI organization** | Standard key | None |
-| Sizes used | 1536×1024 | 1536×1024 | 1536×1024 |
-| Approx. cost / image (`quality: medium`) | ~$0.063 | ~$0.015 | $0 |
-| Role | Primary | Fallback (the default when the org is unverified) | Final fallback (never fails) |
+| | **gpt-image-1** | **gpt-image-1-mini** | **Gemini 2.5 Flash Image** | Pillow placeholder |
+|---|---|---|---|---|
+| Provider | OpenAI | OpenAI | Google | Local (Pillow) |
+| Quality / prompt adherence | Highest | Good (draft quality) | High; follows "no text" reliably | Branded gradient card |
+| Requirements | **Verified OpenAI organization** | Standard key | `GOOGLE_API_KEY` on a **billing-enabled** project (free tier: 0 images) | None |
+| Sizes used | 1536×1024 | 1536×1024 | 3:2 aspect ratio → 1248×832 | 1536×1024 |
+| Approx. cost / image | ~$0.063 (`quality: medium`) | ~$0.015 (`quality: medium`) | ~$0.039 (~1290 output tokens) | $0 |
+| Role | Primary | Fallback 1 (default when the org is unverified) | Fallback 2: **cross-provider redundancy** | Final fallback (never fails) |
 
 DALL-E 2 and DALL-E 3 have been retired by OpenAI (the API returns "model does not exist"), so they were removed
 from the chain. Quality is pinned to `medium` in `config/services.yaml`: the API default is `high`, which costs
 about four times as much. Newer OpenAI models (`gpt-image-1.5`, `gpt-image-2`) can be put at the top of the chain.
 
-All live models above are OpenAI, so an OpenAI outage leaves only the placeholder. Alternatives worth adding for
-provider redundancy (the interface is `client.generate(model, prompt, size) -> bytes`): Google Imagen / Gemini
-image models, Stability AI (SDXL / SD3) for open-model control, Midjourney (no official API; Discord-based).
+Gemini sits after both OpenAI models, so an OpenAI outage, key problem or billing issue still produces a real
+image. `ImageClients` routes `gemini-*` models to `GeminiImageClient` (REST, no SDK) and everything else to
+OpenAI. `gemini-3.1-flash-image` also works on this key and looks more photographic, but it was slower (9.8 s vs
+5.8 s) and painted text despite the no-text prompt, which matters for the image guardrails. Other options
+(the interface is `client.generate(model, prompt, size) -> bytes`): Stability AI (SDXL / SD3), Midjourney
+(no official API).
 
 ## 4. Cost-benefit summary per request (illustrative)
 
@@ -97,6 +101,7 @@ cold latency is higher, about 0.9 s and 2.4 s on the first run):
 |---|---|---|---|
 | gpt-image-1 | 29.8–82.5 | 1536×1024 | 0.063 |
 | gpt-image-1-mini | 15.6 | 1536×1024 | 0.015 |
+| gemini-2.5-flash-image | 5.8 | 1248×832 | 0.039 |
 
 ## 6. Recommendations
 
@@ -105,6 +110,6 @@ cold latency is higher, about 0.9 s and 2.4 s on the first run):
 | **Student / free tier** | OpenAI (program key) + SerpAPI free + Tavily free; images on gpt-image-1-mini; `request_budget_usd: 0.25` |
 | **Small business, quality-first** | gpt-4o smart tier, SerpAPI paid, Perplexity for deep research, gpt-image-1 (verified org), `pass_threshold: 75` |
 | **Lowest cost** | `smart: gpt-4o-mini`, Tavily only, gpt-image-1-mini first, `max_revisions: 0`, longer cache TTL |
-| **Provider outage resilience** | Keep at least two research keys configured; leave the placeholder at the end of the image chain |
+| **Provider outage resilience** | Keep at least two research keys configured; add a billing-enabled `GOOGLE_API_KEY` so images survive an OpenAI outage; leave the placeholder at the end of the image chain |
 | **Strong long-form voice** | Try `LLM_PROVIDER=anthropic` for the writers; compare drafts in the Content Dashboard |
 | **Privacy-sensitive** | Keep moderation on, and keep PII redaction (always on); consider self-hosted models via a custom `create_chat_model` branch |

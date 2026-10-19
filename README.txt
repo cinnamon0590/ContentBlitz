@@ -42,7 +42,7 @@ API goes down.
 | **Research with citations** | Several strategic queries; SerpAPI → Tavily → Perplexity; numbered `[n]` citations to real URLs; every output carries a **Sources & Provenance** section |
 | **SEO blogs** | One H1, H2/H3 structure, 1–2% keyword density, 150–160 character meta description, slug, FAQ (People-also-ask), CTA, internal-link ideas, Flesch readability |
 | **LinkedIn posts** | 1300–1600 characters, hook → story → CTA, 8–12 hashtags, mobile line breaks, sources in a suggested first comment |
-| **Images** | Art-director prompt enhancement with brand palette; gpt-image-1 → gpt-image-1-mini → branded placeholder; Pillow validation; PNG + metadata |
+| **Images** | Art-director prompt enhancement with brand palette; gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → branded placeholder; Pillow validation; PNG + metadata |
 | **Quality pipeline** | Deterministic scoring (SEO, structure, readability, citations, brand voice), with automatic revision loops and suggestions |
 | **Brand voice** | One brand profile across all formats, rule-based checks, and **learn-from-sample** |
 | **Templates** | Blog: how-to/listicle/comparison/thought leadership · LinkedIn: insights/story/tips/announcement · Reports: trend/market/competitive |
@@ -51,7 +51,7 @@ API goes down.
 | **Guardrails** | Prompt-injection and policy screens, PII redaction, moderation, citation integrity, tool and revision caps, per-request budget |
 | **UI** | Streamlit with tabs: Chat · Content Dashboard (edit/score/refine) · Research panel · Image gallery · Export · Settings |
 | **Export** | Markdown, HTML, WordPress blocks, TXT, PDF, PNG/JPG, ZIP bundle |
-| **Quality of engineering** | 150 offline tests (~98% coverage), live-API tests, Docker, dev/prod configs, JSON logs, cost tracking |
+| **Quality of engineering** | 154 offline tests (~98% coverage), live-API tests, Docker, dev/prod configs, JSON logs, cost tracking |
 
 ---
 
@@ -89,7 +89,7 @@ Diagrams (Mermaid) are in [docs/architecture.md](docs/architecture.md). Design t
 | Orchestration | **LangGraph 1.x** | Explicit state machine, conditional edges, ToolNode loops, built-in checkpointers, Studio | CrewAI, AutoGen, Semantic Kernel |
 | LLM | **OpenAI gpt-4o / gpt-4o-mini** | Provided by the program; strong structured output; the cheap tier keeps routing and scoring inexpensive | Claude Sonnet / Haiku, Gemini Pro / Flash via `LLM_PROVIDER` |
 | Research | **SerpAPI** (primary) | Real Google results plus related searches and People-also-ask for SEO | **Tavily** (fallback 1), **Perplexity Agent API** (fallback 2 and deep research) |
-| Images | **gpt-image-1** | Best quality and prompt adherence | gpt-image-1-mini → Pillow placeholder (Stability AI / Google pluggable) |
+| Images | **gpt-image-1** | Best quality and prompt adherence | gpt-image-1-mini → **Gemini 2.5 Flash Image** (Google; needs a billing-enabled project) → Pillow placeholder |
 | Content optimization | **Custom rules + LLM prompts** | Deterministic, explainable, free | Jasper, Copy.ai, Writesonic |
 | UI | **Streamlit** | Fastest route to a multi-tab, data-rich interface | Gradio, React, Flask |
 | State / memory | **LangGraph InMemorySaver / SqliteSaver** | Zero-ops in dev, durable in prod | Postgres saver, Redis |
@@ -223,7 +223,7 @@ Each agent factory (`make_query_handler`, `make_research_agent`, `make_blog_writ
 ## 8. Testing
 
 ```bash
-pytest                         # 150 offline tests (unit + integration + e2e UI + notebook); no keys needed
+pytest                         # 154 offline tests (unit + integration + e2e UI + notebook); no keys needed
 pytest --cov=src               # coverage report (~98%; web_app UI code is excluded and smoke-tested instead)
 pytest tests/unit/test_agent_research.py      # test one agent on its own
 pytest -m live                 # real API calls (needs .env keys; costs a few cents)

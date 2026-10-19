@@ -25,7 +25,7 @@ from langchain_core.messages import (
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
 
 from src.core.config import AppConfig
-from src.integrations.image_clients import ImageChain, OpenAIImageClient
+from src.integrations.image_clients import GeminiImageClient, ImageChain, ImageClients, OpenAIImageClient
 from src.integrations.openai_client import LLMService, ModerationClient
 from src.integrations.perplexity_client import PerplexityClient
 from src.integrations.serp_client import SearchChain, SerpAPIClient
@@ -86,7 +86,9 @@ class AgentDeps:
             config=config,
             llm=llm,
             search=SearchChain(chain, cache=cache, tracker=tracker, keyword_provider=serp),
-            images=ImageChain(OpenAIImageClient(secrets.openai_api_key, quality=config.images.get("quality", "medium")),
+            images=ImageChain(ImageClients(OpenAIImageClient(secrets.openai_api_key,
+                                                             quality=config.images.get("quality", "medium")),
+                                           GeminiImageClient(secrets.google_api_key)),
                               config.images.get("chain", []),
                               config.images.get("sizes", {}), tracker,
                               config.images.get("min_dimension_px", 256)),

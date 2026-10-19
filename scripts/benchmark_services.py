@@ -23,7 +23,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.core.config import load_config  # noqa: E402
 from src.integrations import ProviderError  # noqa: E402
-from src.integrations.image_clients import OpenAIImageClient, validate_image  # noqa: E402
+from src.integrations.image_clients import (  # noqa: E402
+    GeminiImageClient,
+    ImageClients,
+    OpenAIImageClient,
+    validate_image,
+)
 from src.integrations.openai_client import LLMService  # noqa: E402
 from src.integrations.perplexity_client import PerplexityClient  # noqa: E402
 from src.integrations.serp_client import SerpAPIClient  # noqa: E402
@@ -89,9 +94,12 @@ def bench_llm(config) -> list[dict]:
 
 
 def bench_images(config) -> list[dict]:
-    client = OpenAIImageClient(config.secrets.openai_api_key, quality=config.images.get("quality", "medium"))
+    clients = ImageClients(OpenAIImageClient(config.secrets.openai_api_key,
+                                             quality=config.images.get("quality", "medium")),
+                           GeminiImageClient(config.secrets.google_api_key))
     rows = []
     for model in [m for m in config.images.get("chain", []) if m != "placeholder"]:
+        client = clients.for_model(model)
         if not client.available:
             rows.append({"model": model, "status": "skipped (no key)"})
             continue
