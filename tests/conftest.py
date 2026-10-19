@@ -191,3 +191,149 @@ def good_blog_markdown(keyword: str = "email marketing") -> str:
              f"You will learn practical {keyword} habits that fit a busy week.")
     outro = f"## Conclusion\n\nStart small and stay consistent with {keyword}. Get in touch to learn how we can help."
     return "\n\n".join([intro, *sections, faq, outro])
+
+
+# --------------------------------------------------------------------------------------
+# Scripted multi-agent responder + deps factory
+# --------------------------------------------------------------------------------------
+import itertools  # noqa: E402
+
+_ids = itertools.count(1)
+
+
+def tool_call(name: str, **args) -> AIMessage:
+    return AIMessage(content="", tool_calls=[{"name": name, "args": args, "id": f"call_{next(_ids)}"}])
+
+
+def _loop(name: str, **args):
+    """First call requests the tool; once a tool result is present, finish."""
+    return lambda msgs: "DONE" if has_tool_result(msgs) else tool_call(name, **args)
+
+
+LINKEDIN_BODY = "\n\n".join([
+    "Last spring we tested a 5-minute reply rule with three local clients.",
+    "Bookings rose within a month. Customers told us speed felt like care.",
+    "Here is the simple system we used, step by step, so you can copy it.",
+    "First, set up instant alerts. Second, write three reply templates. Third, review weekly.",
+    "None of this needs new software. It needs a habit and a shared inbox. A recent report found most buyers "
+    "choose the first business that replies, which matches what we saw with every client we work with.",
+    "The surprising part was how much calmer the team felt with a clear rule. Fewer dropped leads, fewer "
+    "late-night catch-ups, and more time for the work customers actually pay for.",
+    "If you run a small team, start with one channel and measure reply time for two weeks. Then add the next "
+    "channel only when the first one is consistently fast. Small, boring habits beat big campaigns.",
+    "What is your average response time today? Tell me in the comments.",
+])
+
+
+def default_roles(intent: str = "blog", **request_overrides) -> dict:
+    request = {"intent": intent, "topic": "email marketing for bakeries", "target_keyword": "email marketing",
+               "needs_research": True, "formats": ["blog", "linkedin", "image"] if intent == "campaign" else [],
+               **request_overrides}
+    return {
+        "query_handler": request,
+        "post_research_router": {"next": "report", "reason": "research only"},
+        "general": "Hello! I can write blogs, LinkedIn posts, images and research.",
+        "research_agent": _loop("web_search", query="bakery email marketing statistics 2026"),
+        "research_synthesis": {
+            "summary": "Email remains a top channel for bakeries [1]. Segmentation lifts opens [2].",
+            "key_findings": [{"claim": "Segmented emails get 30% more opens [1]", "source_ids": [1]},
+                             {"claim": "Weekly sends perform best for food brands", "source_ids": [2, 99]}],
+            "statistics": ["30% more opens with segmentation [1]"],
+            "trends": ["AI-personalised subject lines"], "keywords": ["bakery newsletter", "email list growth"],
+        },
+        "blog_writer.research": _loop("keyword_research", seed="email marketing"),
+        "blog_writer": {
+            "title": "Email Marketing for Bakeries: A Practical Guide",
+            "meta_description": "Email marketing for bakeries made simple: build your list, write emails people "
+                                "open, and measure what matters with this practical, step-by-step guide.",
+            "markdown": good_blog_markdown() + "\n\n## Sources\n\n- https://invented.example/fake",
+            "secondary_keywords": ["bakery newsletter"],
+            "internal_link_suggestions": ["/blog/bakery-newsletter-ideas"],
+        },
+        "linkedin_writer.research": _loop("trending_hashtags", topic="email marketing"),
+        "linkedin_writer": {
+            "hook": "Most small shops lose leads to slow replies.",
+            "body": LINKEDIN_BODY + " See https://not-allowed.example [1]",
+            "hashtags": ["SmallBusiness", "EmailMarketing", "#Bakery", "Marketing", "CustomerService",
+                         "Leads", "Growth", "LocalBusiness", "Entrepreneur"],
+        },
+        "image_prompt_enhancer": {"enhanced_prompt": "Warm bakery counter at sunrise, croissants, soft light",
+                                  "alt_text": "Fresh croissants on a bakery counter at sunrise"},
+        "content_strategist": ("# Trend Report: Bakery Email\n\n## Executive Summary\n\nEmail works [1].\n\n"
+                               "## Key Findings\n\n- Segmentation lifts opens 30% [1] [42]\n\n## Recommendations\n\n"
+                               "- Send weekly. See https://made-up.example\n\n## Sources\n\n- junk"),
+        "quality_critic": {"feedback": "Solid and on-brand.", "suggestions": []},
+        "brand_voice_learner": {"tone": "warm", "audience": "locals", "values": [], "signature_phrases": [],
+                                "avoid_words": []},
+    }
+
+
+@pytest.fixture
+def make_deps(config, tmp_path):
+    from src.agents import AgentDeps
+    from src.core.prompts import QUALITY_CRITIC
+    from src.integrations.image_clients import ImageChain
+    from src.integrations.serp_client import SearchChain
+    from src.utils.cache import TTLCache
+    from src.utils.observability import CostTracker
+    from src.utils.quality_validation import QualityValidator
+
+    class FakeKeywords:
+        name = "serpapi"
+        available = True
+
+        def keyword_ideas(self, query):
+            return {"related_searches": [f"{query} tips", f"{query} examples"],
+                    "people_also_ask": [f"What is {query}?"]}
+
+    def _make(roles: dict | None = None, search_fail: bool = False, image_fail: set | None = None,
+              threshold: float = 70, providers: list | None = None):
+        tracker = CostTracker(config.pricing, config.image_pricing, config.search_pricing)
+        responder = responder_by_role(roles if roles is not None else default_roles())
+        llm = LLMService(config, tracker=tracker, chat_models={"smart": FakeChatModel(responder=responder),
+                                                                "fast": FakeChatModel(responder=responder)})
+        providers = providers or [FakeSearchProvider("serpapi", sample_sources(), fail=search_fail),
+                                  FakeSearchProvider("tavily", sample_sources("tavily"), fail=search_fail)]
+        search = SearchChain(providers, cache=TTLCache(tmp_path / "cache"), tracker=tracker,
+                             keyword_provider=FakeKeywords())
+        images = ImageChain(FakeImageClient(image_fail or set()), config.images["chain"], config.images["sizes"],
+                            tracker)
+        return AgentDeps(config=config, llm=llm, search=search, images=images,
+                         validator=QualityValidator(threshold, llm=llm, critique_prompt=QUALITY_CRITIC),
+                         tracker=tracker)
+
+    return _make
+
+
+def apply_update(state: dict, update: dict) -> dict:
+    """Apply a node's partial update using the same reducers as ContentState."""
+    from langgraph.graph.message import add_messages
+
+    from src.workflow.state_management import merge_sources
+
+    new = dict(state)
+    for key, value in update.items():
+        if key in ("messages", "agent_scratch"):
+            new[key] = add_messages(new.get(key, []), value)
+        elif key == "sources":
+            new[key] = merge_sources(new.get(key, []), value)
+        else:
+            new[key] = value
+    return new
+
+
+def drive_agent(node, tools: list, state: dict, max_steps: int = 10) -> dict:
+    """Run agent ↔ ToolNode until the agent stops requesting tools (mirrors the graph wiring)."""
+    from langchain_core.messages import ToolMessage
+
+    by_name = {t.name: t for t in tools}
+    for _ in range(max_steps):
+        state = apply_update(state, node(state))
+        scratch = state.get("agent_scratch", [])
+        if scratch and getattr(scratch[-1], "tool_calls", None):
+            results = [ToolMessage(content=str(by_name[c["name"]].invoke(c["args"])), name=c["name"],
+                                   tool_call_id=c["id"]) for c in scratch[-1].tool_calls]
+            state = apply_update(state, {"agent_scratch": results})
+            continue
+        return state
+    raise AssertionError("tool loop did not terminate")

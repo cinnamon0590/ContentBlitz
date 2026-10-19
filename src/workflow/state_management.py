@@ -105,6 +105,7 @@ class BrandProfile(BaseModel):
 
     name: str = "Your Business"
     industry: str = "small business"
+    location: str = ""  # city / region for local SEO (Moz: use geographic modifiers)
     audience: str = "small business owners and solo creators"
     tone: str = "friendly, expert, practical"
     values: list[str] = Field(default_factory=lambda: ["clarity", "honesty", "helpfulness"])
@@ -282,7 +283,10 @@ class SourceRegistry:
 class ContentState(TypedDict, total=False):
     """State shared across all nodes. Persisted per ``thread_id`` by the checkpointer."""
 
-    messages: Annotated[list[AnyMessage], add_messages]
+    messages: Annotated[list[AnyMessage], add_messages]  # user-visible conversation (memory)
+    # Working memory for the agent ↔ ToolNode loops. Kept separate so tool chatter never
+    # pollutes the user-facing conversation; cleared when each agent finishes.
+    agent_scratch: Annotated[list[AnyMessage], add_messages]
     user_input: str  # the (sanitised) latest user message
     route: Intent  # initial routing decision for this turn
     next_after_research: str  # post-research routing decision
@@ -300,6 +304,7 @@ class ContentState(TypedDict, total=False):
     sources: Annotated[list[dict], merge_sources]  # thread-wide source registry
 
     revision_count: int
+    revision_feedback: str  # quality-gate suggestions handed back to the writer
     quality_target: str  # which artifact the quality gate should check next
     outputs_this_turn: list[str]
     final_response: str

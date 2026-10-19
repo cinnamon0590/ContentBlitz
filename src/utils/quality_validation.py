@@ -133,6 +133,12 @@ class QualityValidator:
         if not kw_intro:
             suggestions.append("Mention the target keyword in the first 100 words.")
         suggestions.extend(meta["issues"])
+        title_issues = co.check_title(blog.title, kw)
+        seo -= 5 * len(title_issues)
+        suggestions.extend(title_issues)
+        if kw and blog.slug and co.slugify(kw) not in blog.slug:
+            seo -= 5
+            suggestions.append("Include the target keyword in the URL slug.")
 
         structure = 100.0 - 20 * len(headings["issues"])
         faq, cta = co.has_faq_section(md), co.has_cta(body, brand.cta)

@@ -121,6 +121,22 @@ def check_meta_description(meta: str, keyword: str = "") -> dict:
     return {"length": length, "has_keyword": has_kw, "ok": not issues, "issues": issues}
 
 
+def check_title(title: str, keyword: str = "") -> list[str]:
+    """Moz title-tag guidance: ~50–60 characters, keyword near the front."""
+    issues = []
+    if len(title) > 60:
+        issues.append(f"Shorten the title to ≤ 60 characters (is {len(title)}) so it isn't truncated in search.")
+    elif len(title) < 30:
+        issues.append(f"Make the title more descriptive (is {len(title)} characters; aim for 50–60).")
+    if keyword:
+        pos = title.lower().find(keyword.lower())
+        if pos == -1:
+            issues.append("Include the target keyword in the title.")
+        elif pos > len(title) / 2:
+            issues.append("Move the target keyword closer to the front of the title.")
+    return issues
+
+
 def fit_meta_description(meta: str, fallback: str = "") -> str:
     """Trim to ≤160 chars at a word boundary; extend from ``fallback`` text if too short."""
     lo, hi = BLOG_TARGETS["meta_description"]
