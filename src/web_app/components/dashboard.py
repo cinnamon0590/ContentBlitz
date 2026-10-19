@@ -15,12 +15,12 @@ KINDS = {"blog": ("📝 SEO Blog", "markdown"), "linkedin": ("💼 LinkedIn", "t
 
 
 def _quality_panel(report: QualityReport) -> None:
-    cols = st.columns([1, 3])
-    cols[0].metric("Quality score", f"{report.overall:.0f}/100", "passed" if report.passed else "needs work",
-                   delta_color="normal" if report.passed else "inverse")
-    with cols[1]:
-        for name, score in report.scores.items():
-            st.progress(min(1.0, score / 100), text=f"{name.replace('_', ' ').title()}: {score:.0f}")
+    # Full width: in a quarter-width column the value was truncated to "83/…" on laptop screens.
+    st.metric("Quality score", f"{report.overall:.0f}/100", "passed" if report.passed else "needs work",
+              delta_color="normal" if report.passed else "inverse")
+    for name, score in report.scores.items():
+        label = "SEO" if name == "seo" else name.replace("_", " ").title()
+        st.progress(min(1.0, score / 100), text=f"{label}: {score:.0f}")
     if report.suggestions:
         st.markdown("**Suggestions to improve**")
         for suggestion in report.suggestions:
