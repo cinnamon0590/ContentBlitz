@@ -268,8 +268,18 @@ def default_roles(intent: str = "blog", **request_overrides) -> dict:
     }
 
 
-@pytest.fixture
-def make_deps(config, tmp_path):
+class FakeKeywords:
+    name = "serpapi"
+    available = True
+
+    def keyword_ideas(self, query):
+        return {"related_searches": [f"{query} tips", f"{query} examples"],
+                "people_also_ask": [f"What is {query}?"]}
+
+
+def build_fake_deps(config, cache_dir, roles: dict | None = None, search_fail: bool = False,
+                    image_fail: set | None = None, threshold: float = 70, providers: list | None = None):
+    """Offline AgentDeps: scripted LLM, fake search/image providers. Also used by the notebook's offline mode."""
     from src.agents import AgentDeps
     from src.core.prompts import QUALITY_CRITIC
     from src.integrations.image_clients import ImageChain
@@ -278,29 +288,24 @@ def make_deps(config, tmp_path):
     from src.utils.observability import CostTracker
     from src.utils.quality_validation import QualityValidator
 
-    class FakeKeywords:
-        name = "serpapi"
-        available = True
+    tracker = CostTracker(config.pricing, config.image_pricing, config.search_pricing)
+    responder = responder_by_role(roles if roles is not None else default_roles())
+    llm = LLMService(config, tracker=tracker, chat_models={"smart": FakeChatModel(responder=responder),
+                                                            "fast": FakeChatModel(responder=responder)})
+    providers = providers or [FakeSearchProvider("serpapi", sample_sources(), fail=search_fail),
+                              FakeSearchProvider("tavily", sample_sources("tavily"), fail=search_fail)]
+    search = SearchChain(providers, cache=TTLCache(cache_dir), tracker=tracker, keyword_provider=FakeKeywords())
+    images = ImageChain(FakeImageClient(image_fail or set()), config.images["chain"], config.images["sizes"],
+                        tracker)
+    return AgentDeps(config=config, llm=llm, search=search, images=images,
+                     validator=QualityValidator(threshold, llm=llm, critique_prompt=QUALITY_CRITIC),
+                     tracker=tracker)
 
-        def keyword_ideas(self, query):
-            return {"related_searches": [f"{query} tips", f"{query} examples"],
-                    "people_also_ask": [f"What is {query}?"]}
 
-    def _make(roles: dict | None = None, search_fail: bool = False, image_fail: set | None = None,
-              threshold: float = 70, providers: list | None = None):
-        tracker = CostTracker(config.pricing, config.image_pricing, config.search_pricing)
-        responder = responder_by_role(roles if roles is not None else default_roles())
-        llm = LLMService(config, tracker=tracker, chat_models={"smart": FakeChatModel(responder=responder),
-                                                                "fast": FakeChatModel(responder=responder)})
-        providers = providers or [FakeSearchProvider("serpapi", sample_sources(), fail=search_fail),
-                                  FakeSearchProvider("tavily", sample_sources("tavily"), fail=search_fail)]
-        search = SearchChain(providers, cache=TTLCache(tmp_path / "cache"), tracker=tracker,
-                             keyword_provider=FakeKeywords())
-        images = ImageChain(FakeImageClient(image_fail or set()), config.images["chain"], config.images["sizes"],
-                            tracker)
-        return AgentDeps(config=config, llm=llm, search=search, images=images,
-                         validator=QualityValidator(threshold, llm=llm, critique_prompt=QUALITY_CRITIC),
-                         tracker=tracker)
+@pytest.fixture
+def make_deps(config, tmp_path):
+    def _make(roles: dict | None = None, **kwargs):
+        return build_fake_deps(config, tmp_path / "cache", roles, **kwargs)
 
     return _make
 

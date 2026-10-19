@@ -1,1 +1,15 @@
-test
+services:
+  app:
+    build: .
+    image: contentblitz:latest
+    container_name: contentblitz
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env                 # API keys (never baked into the image)
+    environment:
+      APP_ENV: production    # JSON logs + SQLite conversation memory
+    volumes:
+      - ./outputs:/app/outputs   # generated images and exports
+      - ./.cache:/app/.cache     # research cache + checkpoints.sqlite
+    restart: unless-stopped
