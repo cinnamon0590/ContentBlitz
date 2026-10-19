@@ -47,7 +47,7 @@ API goes down.
 | **Guardrails** | Prompt-injection and policy screens, PII redaction, moderation, citation integrity, tool and revision caps, per-request budget |
 | **UI** | Streamlit with tabs: Chat · Content Dashboard (edit/score/refine) · Research panel · Image gallery · Export · Settings. **Accessible and mobile-ready**: 0 axe-core violations (WCAG 2.2 AA) on every tab at desktop and 390 px phone width, real image alt text, AA-contrast theme (`.streamlit/config.toml`), no horizontal scrolling on phones |
 | **Export** | Markdown, HTML, WordPress blocks, TXT, PDF, PNG/JPG, ZIP bundle |
-| **Quality of engineering** | 185 offline tests (~98% coverage), live-API tests for all three LLM providers, GitHub Actions CI (lint + tests on Python 3.12 and 3.14, 90% coverage gate), Docker, dev/prod configs, JSON logs, cost tracking |
+| **Quality of engineering** | 201 offline tests (~98% coverage), live-API tests for all three LLM providers, GitHub Actions CI (lint + tests on Python 3.12 and 3.14, 90% coverage gate), Docker, dev/prod configs, JSON logs, cost tracking |
 
 ---
 
@@ -221,7 +221,7 @@ Each agent factory (`make_query_handler`, `make_research_agent`, `make_blog_writ
 ## 8. Testing
 
 ```bash
-pytest                         # 185 offline tests (unit + integration + e2e UI + notebook); no keys needed
+pytest                         # 201 offline tests (unit + integration + e2e UI + notebook); no keys needed
 pytest --cov=src               # coverage report (~98%; web_app UI code is excluded and smoke-tested instead)
 pytest tests/unit/test_agent_research.py      # test one agent on its own
 pytest -m live                 # real API calls (needs .env keys; costs a few cents); includes one full
@@ -251,7 +251,7 @@ The fakes are in `tests/conftest.py`. `FakeChatModel` dispatches on each prompt'
 - **Docker**: `docker compose up --build`, then open http://localhost:8501. Outputs and cache are mounted as volumes;
   keys come from `.env`; `APP_ENV=production` uses SQLite memory.
 - **Streamlit Community Cloud**: point it at `src/web_app/streamlit_app.py` and add your keys as secrets.
-- **LangGraph Platform / Studio**: `langgraph.json` exposes `make_studio_graph`.
+- **LangGraph Platform / Studio**: `langgraph dev` (CLI included in `requirements.txt`) serves `src/workflow/studio.py:graph` from `langgraph.json`; verified locally, all 16 nodes shown in Studio.
 
 Step-by-step instructions: [docs/deployment_guide.md](docs/deployment_guide.md).
 

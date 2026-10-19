@@ -84,5 +84,10 @@ caller ──▶ Chain.search()/generate()
 - Keyword density and readability are heuristics; they don't guarantee rankings.
 - Regex injection detection can miss novel attacks. Defense in depth limits the impact: grounding rules,
   no tool access to secrets, output scrubbing.
-- Pricing in `services.yaml` is approximate and must be maintained.
+- Pricing in `services.yaml` is approximate and must be maintained. Gemini text models are not priced, so
+  Gemini runs report tokens but $0.00.
+- The policy screen is pattern-based too: it blocks the common fake-review phrasings (tested with 6 deceptive and
+  5 legitimate variants), but a determined user can reword around it. OpenAI moderation is the second layer.
+- The trend radar depends on Google Trends having data. Long topics are retried with their shorter core
+  (`trend_niches`, at most 3 SerpAPI calls); niche topics can still return nothing, and the report says so.
 - The SQLite checkpointer is single-host.
