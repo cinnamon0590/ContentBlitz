@@ -71,6 +71,25 @@ def keyword_density(text: str, keyword: str) -> float:
     return round(occurrences * len(keyword.split()) / total * 100, 2)
 
 
+def voice_metrics(text: str) -> dict[str, float]:
+    """Style fingerprint used by the brand-voice checks: sentence length and emoji density."""
+    plain = strip_markdown(re.sub(r"(?<!\w)#[A-Za-z][A-Za-z0-9_]*", "", text))
+    sentences = [s for s in re.split(r"(?<=[.!?])\s+|\n+", plain) if re.search(r"[A-Za-z]", s)]
+    words = len(re.findall(r"\b[\w'-]+\b", plain))
+    emojis = len(_EMOJI_PATTERN.findall(text))
+    return {
+        "avg_sentence_words": round(words / len(sentences), 1) if sentences else 0.0,
+        "emoji_per_100_words": round(emojis / words * 100, 2) if words else 0.0,
+        "emoji_count": emojis,
+    }
+
+
+def emoji_level(emoji_per_100_words: float) -> str:
+    if emoji_per_100_words == 0:
+        return "none"
+    return "light" if emoji_per_100_words <= 2 else "heavy"
+
+
 def readability(text: str) -> dict[str, float]:
     plain = strip_markdown(text)
     if not plain:

@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from src.utils import content_optimization as co
 from src.workflow.state_management import (
+    VOICE_ARCHETYPES,
     BlogPost,
     BrandProfile,
     LinkedInPost,
@@ -71,7 +72,22 @@ def brand_voice_check(text: str, brand: BrandProfile) -> tuple[float, list[str],
     if exclamations > 4:
         score -= 10
         suggestions.append("Tone down exclamation marks for a professional voice.")
-    return max(0.0, score), suggestions, {"banned_words_found": banned_hits, "missing_phrases": missing_required}
+    style = co.voice_metrics(text)
+    if brand.emoji_level == "none" and style["emoji_count"]:
+        score -= 10
+        suggestions.append("Remove the emojis: this brand voice doesn't use them.")
+    elif brand.emoji_level == "light" and style["emoji_per_100_words"] > 3:
+        score -= 10
+        suggestions.append("Use fewer emojis (the brand voice uses them sparingly).")
+    target = brand.avg_sentence_words
+    if target and style["avg_sentence_words"] and abs(style["avg_sentence_words"] - target) / target > 0.5:
+        score -= 15
+        direction = "Shorten" if style["avg_sentence_words"] > target else "Vary and lengthen"
+        suggestions.append(f"{direction} sentences to match the brand voice (about {target:.0f} words per sentence; "
+                           f"this draft averages {style['avg_sentence_words']:.0f}).")
+    return max(0.0, score), suggestions, {"banned_words_found": banned_hits, "missing_phrases": missing_required,
+                                          "avg_sentence_words": style["avg_sentence_words"],
+                                          "emoji_per_100_words": style["emoji_per_100_words"]}
 
 
 def score_hook(hook: str) -> tuple[float, list[str]]:
@@ -287,15 +303,25 @@ class LearnedVoice(BaseModel):
     values: list[str] = Field(default_factory=list)
     signature_phrases: list[str] = Field(default_factory=list)
     avoid_words: list[str] = Field(default_factory=list)
+    archetype: str = ""
 
 
 def learn_brand_voice(sample_text: str, base: BrandProfile, llm, system_prompt: str) -> BrandProfile:
-    """Infer tone, audience and vocabulary from sample content and merge them into ``base``."""
+    """Infer tone, audience, persona and style from sample content and merge them into ``base``.
+
+    Sentence length, emoji use and reading ease are measured in Python; the LLM only
+    describes the qualitative voice (tone, audience, values, archetype).
+    """
     learned = llm.structured(LearnedVoice, system_prompt, sample_text[:6000], tier="fast") if llm else None
     profile = base.model_copy(deep=True)
     profile.sample_text = sample_text[:2000]
     profile.target_reading_ease = max(30.0, min(80.0, co.readability(sample_text)["flesch_reading_ease"]))
+    style = co.voice_metrics(sample_text)
+    profile.avg_sentence_words = style["avg_sentence_words"]
+    profile.emoji_level = co.emoji_level(style["emoji_per_100_words"])
     if learned:
+        archetype = learned.archetype.strip().lower()
+        profile.voice_archetype = archetype if archetype in VOICE_ARCHETYPES else profile.voice_archetype
         profile.tone = learned.tone or profile.tone
         profile.audience = learned.audience or profile.audience
         profile.values = learned.values or profile.values

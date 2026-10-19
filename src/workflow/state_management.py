@@ -34,6 +34,16 @@ MODEL_KNOWLEDGE_LABEL = "Based on AI model knowledge — not verified against li
 
 Intent = Literal["research", "blog", "linkedin", "image", "report", "campaign", "general", "blocked"]
 
+# Writing personas the brand voice can follow (learned from samples or chosen in Settings).
+VOICE_ARCHETYPES: dict[str, str] = {
+    "storyteller": "lead with a moment, a customer or a turning point; show, then tell",
+    "conversational": "write like you talk to one person: contractions, short sentences, direct questions",
+    "data-driven": "anchor every point in evidence and numbers from the sources; precise, measured claims",
+    "educator": "explain step by step with clear examples and practical takeaways",
+    "contrarian": "challenge a common belief with a clear thesis, then back it up",
+}
+EmojiLevel = Literal["none", "light", "heavy"]
+
 
 def utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
@@ -118,6 +128,9 @@ class BrandProfile(BaseModel):
     visual_style: str = "clean, modern, bright, professional photography"
     sample_text: str = ""
     target_reading_ease: float = 60.0  # Flesch reading ease (60–70 ≈ plain English)
+    voice_archetype: str = ""  # a VOICE_ARCHETYPES key, or "" for no persona
+    emoji_level: EmojiLevel = "light"
+    avg_sentence_words: float = 0.0  # typical sentence length of the brand's writing; 0 = not measured
 
 
 class ContentRequest(BaseModel):

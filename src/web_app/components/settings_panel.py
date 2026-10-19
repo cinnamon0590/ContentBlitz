@@ -5,7 +5,9 @@ from __future__ import annotations
 import streamlit as st
 
 from src.web_app.components import brand, get_app, new_thread
-from src.workflow.state_management import BrandProfile
+from src.workflow.state_management import VOICE_ARCHETYPES, BrandProfile
+
+EMOJI_LABELS = {"none": "None", "light": "Light (0–3 per post)", "heavy": "Heavy (emoji bullets)"}
 
 
 def _split(text: str) -> list[str]:
@@ -27,6 +29,17 @@ def render_settings_panel() -> None:
             location = c1.text_input("Location (for local SEO)", current.location, placeholder="e.g. Austin, TX")
             audience = c2.text_input("Target audience", current.audience)
             tone = st.text_input("Tone (adjectives)", current.tone)
+            v1, v2, v3 = st.columns(3)
+            archetypes = ["", *VOICE_ARCHETYPES]
+            archetype = v1.selectbox("Writing persona", archetypes,
+                                     index=archetypes.index(current.voice_archetype)
+                                     if current.voice_archetype in archetypes else 0,
+                                     format_func=lambda a: a.title() if a else "None",
+                                     help="\n".join(f"**{k.title()}**: {v}" for k, v in VOICE_ARCHETYPES.items()))
+            emoji = v2.selectbox("Emoji use", list(EMOJI_LABELS), index=list(EMOJI_LABELS).index(current.emoji_level),
+                                 format_func=EMOJI_LABELS.get)
+            sentence = v3.number_input("Words per sentence", 0.0, 40.0, float(current.avg_sentence_words), 1.0,
+                                       help="Typical sentence length of your writing (0 = don't check).")
             values = st.text_input("Brand values (comma-separated)", ", ".join(current.values))
             banned = st.text_input("Words to avoid (comma-separated)", ", ".join(current.banned_words))
             required = st.text_input("Signature phrases to include (comma-separated)",
@@ -39,6 +52,7 @@ def render_settings_panel() -> None:
             if st.form_submit_button("Save brand profile", type="primary"):
                 st.session_state.brand = current.model_copy(update={
                     "name": name, "industry": industry, "location": location, "audience": audience, "tone": tone,
+                    "voice_archetype": archetype, "emoji_level": emoji, "avg_sentence_words": sentence,
                     "values": _split(values), "banned_words": _split(banned), "required_phrases": _split(required),
                     "cta": cta, "visual_style": style, "color_palette": palette,
                 }).model_dump()
@@ -51,7 +65,9 @@ def render_settings_panel() -> None:
                 with st.spinner("Analyzing your writing…"):
                     learned = app.learn_brand_voice(sample, current)
                 st.session_state.brand = learned.model_dump()
-                st.success(f"Learned tone: **{learned.tone}** · audience: **{learned.audience}**")
+                st.success(f"Learned tone: **{learned.tone}** · audience: **{learned.audience}** · persona: "
+                           f"**{learned.voice_archetype or 'none'}** · ~{learned.avg_sentence_words:.0f} words per "
+                           f"sentence · emojis: **{learned.emoji_level}**")
                 st.rerun()
         if st.button("Reset brand profile"):
             st.session_state.brand = BrandProfile().model_dump()

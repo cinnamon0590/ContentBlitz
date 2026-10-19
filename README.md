@@ -39,7 +39,7 @@ API goes down.
 | **LinkedIn posts** | 1300–1600 characters, hook → story → CTA, 8–12 hashtags, mobile line breaks, sources in a suggested first comment; **4 alternative hooks** (story, hot take, how-to hack, data point), scored, best one first, swappable in the Dashboard |
 | **Images** | Art-director prompt enhancement with brand palette; gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → branded placeholder; Pillow validation; PNG + metadata |
 | **Quality pipeline** | Deterministic scoring (SEO, structure, readability, citations, brand voice), with automatic revision loops and suggestions |
-| **Brand voice** | One brand profile across all formats, rule-based checks, and **learn-from-sample** |
+| **Brand voice** | One brand profile across all formats, rule-based checks, and **learn-from-sample**: writing persona (storyteller, conversational, data-driven, educator, contrarian), emoji level and sentence length are measured and enforced |
 | **Trend radar** | "What should I post about?" → rising Google Trends searches for your niche with their growth, cited like any source, with one-click LinkedIn / blog drafts in the 🔎 Research tab |
 | **Templates** | Blog: how-to/listicle/comparison/thought leadership · LinkedIn: insights/story/tips/announcement · Reports: trend/market/competitive |
 | **Workflows** | Multi-turn refinement ("make it shorter"), research-first, and **campaign / content series** (blog + LinkedIn + image in one request) |
@@ -47,7 +47,7 @@ API goes down.
 | **Guardrails** | Prompt-injection and policy screens, PII redaction, moderation, citation integrity, tool and revision caps, per-request budget |
 | **UI** | Streamlit with tabs: Chat · Content Dashboard (edit/score/refine) · Research panel · Image gallery · Export · Settings |
 | **Export** | Markdown, HTML, WordPress blocks, TXT, PDF, PNG/JPG, ZIP bundle |
-| **Quality of engineering** | 174 offline tests (~98% coverage), live-API tests, Docker, dev/prod configs, JSON logs, cost tracking |
+| **Quality of engineering** | 179 offline tests (~98% coverage), live-API tests, Docker, dev/prod configs, JSON logs, cost tracking |
 
 ---
 
@@ -221,7 +221,7 @@ Each agent factory (`make_query_handler`, `make_research_agent`, `make_blog_writ
 ## 8. Testing
 
 ```bash
-pytest                         # 174 offline tests (unit + integration + e2e UI + notebook); no keys needed
+pytest                         # 179 offline tests (unit + integration + e2e UI + notebook); no keys needed
 pytest --cov=src               # coverage report (~98%; web_app UI code is excluded and smoke-tested instead)
 pytest tests/unit/test_agent_research.py      # test one agent on its own
 pytest -m live                 # real API calls (needs .env keys; costs a few cents)

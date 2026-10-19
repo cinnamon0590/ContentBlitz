@@ -22,7 +22,7 @@ contributors and AI coding agents. For setup, see `README.md` / `README.txt`. Fo
 | Images | gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → Pillow branded placeholder |
 | Memory | `InMemorySaver` (dev) / `SqliteSaver` (prod) keyed by `thread_id` |
 | UI | Streamlit: Chat · Content Dashboard · Research · Images · Export · Settings |
-| Tests | 174 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live` |
+| Tests | 179 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live` |
 
 ### Repository map
 
@@ -264,10 +264,10 @@ writer, for at most `max_revisions` (2) rewrites, and only while the request is 
 records a warning and moves on. Users can also edit content in the **Content Dashboard** and re-score it.
 
 **Brand voice consistency** works in four ways:
-- One `BrandProfile` (tone, audience, values, banned words, signature phrases, CTA, palette, visual style, location) is injected into every writer prompt.
-- The same profile is checked by rules (banned words, required phrases, reading ease, exclamation marks).
+- One `BrandProfile` (tone, audience, values, banned words, signature phrases, CTA, palette, visual style, location, **writing persona**, **emoji level**, **sentence length**) is injected into every writer prompt.
+- The same profile is checked by rules (banned words, required phrases, reading ease, exclamation marks, emoji use vs the brand's level, average sentence length within ±50% of the brand's).
 - The campaign writers see each other's outputs.
-- *Learn my brand voice* infers a profile from sample text you paste in.
+- *Learn my brand voice* infers a profile from sample text you paste in: the LLM picks tone, audience and persona; sentence length, emoji level and reading ease are measured in Python.
 
 ---
 

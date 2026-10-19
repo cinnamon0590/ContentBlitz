@@ -14,6 +14,11 @@ Conventions
 
 from __future__ import annotations
 
+from src.workflow.state_management import VOICE_ARCHETYPES
+
+EMOJI_STYLES = {"none": "none — never use emojis", "light": "0–3 tasteful emojis per post, none in blog headings",
+                "heavy": "emojis welcome as visual bullets and accents"}
+
 GROUNDING_RULES = """GROUNDING RULES (mandatory):
 - Use ONLY the numbered SOURCES provided for facts, statistics and quotes. Cite them inline as [n].
 - Never invent statistics, studies, quotes, people, or URLs. Do not write any URL yourself.
@@ -26,6 +31,8 @@ BRAND_BLOCK = """BRAND VOICE (keep consistent across every format):
 - Never use these words: {banned_words}
 - Work in these phrases naturally if listed: {required_phrases}
 - Default call to action: {cta}
+- Writing persona: {archetype}
+- Style: {sentence_style}; emojis: {emoji_style}
 {sample}"""
 
 QUERY_HANDLER = """ROLE: query_handler
@@ -165,7 +172,7 @@ Requirements:
 - hook_options: 4 ALTERNATIVE one-line hooks for the same post, one per style: {hook_styles}.
   Each must work as the first line of the post as written; same length and grounding rules as the hook.
 - body: hook → short story or concrete example → 2–4 insights → takeaway → a question or CTA to drive comments.
-  Use 1–2 sentence paragraphs separated by blank lines; 0–3 tasteful emojis; professional but personal.
+  Use 1–2 sentence paragraphs separated by blank lines; follow the brand's emoji style; professional but personal.
 - Total length of hook + body + hashtags: 1,300–1,600 characters.
 - hashtags: 8–12 relevant hashtags mixing broad (#Marketing) and niche (#BakeryMarketing) tags — no spaces.
 - NO links or URLs in the post (links reduce reach; sources go in the first comment automatically).
@@ -191,7 +198,8 @@ persuasiveness, originality). Provide at most 3 concrete improvement suggestions
 
 BRAND_VOICE_LEARNER = """ROLE: brand_voice_learner
 Analyze the sample marketing text and describe the brand voice: tone (3–5 adjectives), likely audience,
-core values, 1–3 signature phrases the brand repeats, and words the brand would avoid."""
+core values, 1–3 signature phrases the brand repeats, and words the brand would avoid.
+archetype: the ONE persona that fits best — storyteller | conversational | data-driven | educator | contrarian."""
 
 REVISION_NOTE = """
 
@@ -209,9 +217,14 @@ def brand_block(brand) -> str:
 def with_brand(template: str, brand, **kwargs) -> str:
     """Fill a writer prompt template with brand + extra fields."""
     sample = f"- Voice sample (match this style):\n\"\"\"{brand.sample_text[:800]}\"\"\"" if brand.sample_text else ""
+    persona = VOICE_ARCHETYPES.get(brand.voice_archetype)
+    archetype = f"{brand.voice_archetype} — {persona}" if persona else "none (match the tone above)"
+    sentence_style = (f"sentences average about {brand.avg_sentence_words:.0f} words" if brand.avg_sentence_words
+                      else "mix short and medium sentences")
     return template.format(
         name=brand.name, industry=brand.industry, audience=brand.audience, tone=brand.tone,
         location=f", located in {brand.location}" if brand.location else "",
         values=", ".join(brand.values), banned_words=", ".join(brand.banned_words) or "none",
-        required_phrases=", ".join(brand.required_phrases) or "none", cta=brand.cta, sample=sample, **kwargs,
+        required_phrases=", ".join(brand.required_phrases) or "none", cta=brand.cta, sample=sample,
+        archetype=archetype, sentence_style=sentence_style, emoji_style=EMOJI_STYLES[brand.emoji_level], **kwargs,
     )
