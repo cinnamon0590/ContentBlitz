@@ -91,3 +91,4 @@ caller ──▶ Chain.search()/generate()
 - The trend radar depends on Google Trends having data. Long topics are retried with their shorter core
   (`trend_niches`, at most 3 SerpAPI calls); niche topics can still return nothing, and the report says so.
 - The SQLite checkpointer is single-host.
+- Blog readability: gpt-4o writes at a Flesch reading ease of about 30–45 even when asked for 60+. Section expansion lengthens posts to 1,200+ words, but readability still often scores below the brand target; the score and its suggestion tell the user what to edit.

@@ -22,7 +22,7 @@ contributors and AI coding agents. For setup, see `README.md` / `README.txt`. Fo
 | Images | gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → Pillow branded placeholder |
 | Memory | `InMemorySaver` (dev) / `SqliteSaver` (prod) keyed by `thread_id` |
 | UI | Streamlit: Chat · Content Dashboard · Research · Images · Export · Settings |
-| Tests | 201 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live`; GitHub Actions CI on every push (Python 3.11–3.14 + Docker image build) |
+| Tests | 206 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live`; GitHub Actions CI on every push (Python 3.11–3.14 + Docker image build) |
 
 ### Repository map
 
@@ -203,6 +203,7 @@ node({"user_input": "Write an SEO blog about email marketing for bakeries"})
 | **Reads / writes** | Reads `research`, `brand`, `request`, `sources`, and the previous `blog` when revising. Writes `blog` (`BlogPost`), `quality_target="blog"` |
 | **LLM** | `smart` tier, structured `BlogDraft` (prompt `BLOG_WRITER`: Moz on-page SEO, Google helpful-content/E-E-A-T, brand block, grounding rules) |
 | **Templates** | how-to · listicle · comparison · thought leadership (`src/core/templates.py`; the user can name one, otherwise it's auto-suggested) |
+| **Long-form expansion** | gpt-4o writes about 700 words per reply however much it is asked for, so a draft under 1,200 words is grown **one `##` section at a time** (`expand_short_draft`, prompt `BLOG_EXPANDER`): body sections get parallel requests for ~250 more words in plain language, keeping headings and `[n]` citations; the FAQ and conclusion are left alone. A section is replaced only if its heading is kept and it got longer. Measured live: 657 → 1,304 and 666 → 1,360 words, scores 81 and 91 |
 | **Deterministic post-processing** | `fit_meta_description`. `slugify(keyword)`. Exactly one H1 with an author/reviewer byline (E-E-A-T). Extra H1s demoted. `scrub_body` drops any model-written Sources section, invented URLs and invalid `[n]`. Internal-link fallback from H2s. Provenance appended |
 | **Revision mode** | Uses quality-gate feedback or user refine instructions. Skips the keyword tools and includes the previous draft |
 | **Fallbacks** | If structured output fails, it falls back to plain-text Markdown and derives the metadata. If the LLM is down, it sends a warning and the campaign continues |
