@@ -29,6 +29,7 @@ from src.agents import (
     AgentDeps,
     add_output,
     add_warning,
+    advance_pending,
     brand_of,
     clear_scratch,
     format_sources,
@@ -109,7 +110,8 @@ def compose_blog(deps: AgentDeps, state: ContentState, keyword_payloads: list[di
             markdown = deps.llm.text(system + "\nReturn only the Markdown post.", user, tier="smart")
         except RuntimeError as exc:
             return {"warnings": add_warning(state, f"Blog writer unavailable: {exc}"), "agent_scratch": clear_scratch(),
-                    "quality_target": ""}
+                    "quality_target": "",
+                    "pending_formats": advance_pending(state, "blog")}
         h1 = re.search(r"^#\s+(.+)$", markdown, re.M)
         draft = BlogDraft(title=h1.group(1).strip() if h1 else (request.topic or keyword).title(), markdown=markdown)
         warnings.append("Structured output failed; blog metadata was derived automatically.")

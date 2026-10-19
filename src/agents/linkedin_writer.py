@@ -24,6 +24,7 @@ from src.agents import (
     AgentDeps,
     add_output,
     add_warning,
+    advance_pending,
     brand_of,
     clear_scratch,
     format_sources,
@@ -107,7 +108,8 @@ def compose_linkedin(deps: AgentDeps, state: ContentState, trend_payloads: list[
             text = deps.llm.text(system + "\nReturn only the post text.", user, tier="smart")
         except RuntimeError as exc:
             return {"warnings": add_warning(state, f"LinkedIn writer unavailable: {exc}"),
-                    "agent_scratch": clear_scratch(), "quality_target": ""}
+                    "agent_scratch": clear_scratch(), "quality_target": "",
+                    "pending_formats": advance_pending(state, "linkedin")}
         hook, _, body = text.strip().partition("\n")
         draft = LinkedInDraft(hook=hook, body=body, hashtags=co.extract_hashtags(text))
         warnings.append("Structured output failed; hook/hashtags were derived automatically.")

@@ -171,7 +171,9 @@ def make_post_research_router(deps: AgentDeps):
 def make_general_handler(deps: AgentDeps):
     def general_handler(state: ContentState) -> dict:
         request = request_of(state)
-        history = [m for m in state.get("messages", []) if isinstance(m, HumanMessage | AIMessage)][-12:]
+        # Recent turns only, each truncated: enough for "what did I ask earlier?" without huge prompts.
+        history = [type(m)(content=message_text(m)[:1500])
+                   for m in state.get("messages", []) if isinstance(m, HumanMessage | AIMessage)][-12:]
         system = prompts.GENERAL
         if request.clarifying_question:
             system += f"\nAsk this clarifying question: {request.clarifying_question}"

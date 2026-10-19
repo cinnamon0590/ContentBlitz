@@ -308,6 +308,7 @@ class ContentState(TypedDict, total=False):
     quality_target: str  # which artifact the quality gate should check next
     outputs_this_turn: list[str]
     final_response: str
+    usage: dict  # CostTracker summary for the latest turn
     errors: list[str]
     warnings: list[str]
     tool_iterations: int
