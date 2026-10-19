@@ -25,6 +25,7 @@ from pydantic import BaseModel
 
 from src.agents import AgentDeps, request_of
 from src.core import prompts
+from src.core.templates import REPORT_TEMPLATES
 from src.integrations.openai_client import message_text
 from src.utils.observability import get_logger
 from src.workflow.state_management import MODEL_KNOWLEDGE_LABEL, ContentRequest, ContentState
@@ -37,8 +38,12 @@ _HEURISTICS: list[tuple[str, str]] = [
     (r"\blinked ?in\b", "linkedin"),
     (r"\b(blog|article|seo post|long[- ]form)\b", "blog"),
     (r"\b(report|summari[sz]e|summary)\b", "report"),
-    (r"\b(research|trends?|statistics|stats|analy[sz]e|analysis|insights?|market)\b", "research"),
+    (r"\b(research|trends?|trending|statistics|stats|analy[sz]e|analysis|insights?|market)\b"
+     r"|\bwhat (should|can) (i|we) (write|post)\b|\b(content|topic|post) ideas\b", "research"),
 ]
+# "What should I post about?" asks for ideas, not content: answer with a trend report unless a format is named.
+_TOPIC_DISCOVERY = r"\bwhat (should|can|do) (i|we) (write|post|blog|talk) about\b|\b(content|topic|post) ideas\b"
+_NAMED_FORMAT = r"\b(blog|article|linked ?in|image|picture|photo|visual|campaign|series)\b"
 _REFINE = r"\b(make it|make the|shorter|longer|rewrite|revise|edit|tweak|more (casual|formal|fun)|change the tone)\b"
 
 
@@ -69,6 +74,10 @@ def _context_summary(state: ContentState, max_messages: int = 6) -> str:
     artifacts = []
     if research := state.get("research"):
         artifacts.append(f"research on '{research.get('topic', '')}'")
+        rising = [s for s in research.get("trend_signals", []) if s.get("kind") == "rising"][:5]
+        if rising:  # lets "write about the fastest-rising one" resolve to a concrete topic
+            artifacts.append("trend radar (fastest-rising first): "
+                             + "; ".join(f"{s['query']} ({s['growth']})" for s in rising))
     if blog := state.get("blog"):
         artifacts.append(f"blog draft '{blog.get('title', '')}'")
     if state.get("linkedin"):
@@ -89,6 +98,9 @@ def _topics_overlap(a: str, b: str) -> bool:
 def finalize_request(request: ContentRequest, state: ContentState) -> ContentRequest:
     """Deterministic post-processing of the classifier output (guards against LLM inconsistency)."""
     research = state.get("research") or {}
+    text = state.get("user_input", "")
+    if re.search(_TOPIC_DISCOVERY, text, re.I) and not re.search(_NAMED_FORMAT, text, re.I):
+        request.intent, request.template, request.formats = "research", "trend report", []
     if not request.topic and research:
         request.topic = research.get("topic", "")
     if request.refine_target and not state.get(request.refine_target):
@@ -153,7 +165,7 @@ def make_post_research_router(deps: AgentDeps):
             decision = pending[0]
         elif request.intent in ("blog", "linkedin", "image"):
             decision = request.intent
-        elif request.intent == "report":
+        elif request.intent == "report" or request.template in REPORT_TEMPLATES:
             decision = "report"
         else:  # research or unclear → ask the LLM; default to the research report
             research = state.get("research") or {}

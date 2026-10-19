@@ -1,7 +1,8 @@
 """SerpAPI (Google results) client and the research-provider fallback chain.
 
 ``SerpAPIClient`` is the primary research provider, as the FAQ recommends. It
-also supplies SEO keyword data: related searches and "People also ask".
+also supplies SEO keyword data (related searches and "People also ask") and
+search-demand trends (Google Trends related queries with their growth).
 
 ``SearchChain`` provides redundancy: it tries providers in the order set in
 ``config/services.yaml`` (SerpAPI → Tavily → Perplexity). Each result is cached
@@ -12,19 +13,60 @@ then to an explicit "offline" outcome, so the agents can label their output
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Protocol
+from urllib.parse import urlencode
 
 import requests
 
 from src.integrations import ProviderError, request_json
 from src.utils.cache import TTLCache
 from src.utils.observability import CostTracker, get_logger
-from src.workflow.state_management import Source
+from src.workflow.state_management import Source, TrendSignal
 
 log = get_logger("search")
 SERPAPI_URL = "https://serpapi.com/search.json"
+_TREND_STOPWORDS = {"the", "a", "an", "and", "or", "for", "of", "in", "on", "to", "with", "how", "what", "is",
+                    "best", "my", "your", "small", "business", "businesses", "tips", "ideas", "near", "me",
+                    "content", "post", "posts", "social", "media", "write", "this", "month", "2026", "2027"}
+
+
+def topic_stems(text: str) -> set[str]:
+    words = re.findall(r"[a-z0-9]+", text.lower())
+    return {w[:5] for w in words if w not in _TREND_STOPWORDS and len(w) > 1}
+
+
+def relevant_trends(topic: str, signals: list[TrendSignal], limit: int = 8) -> list[TrendSignal]:
+    """Keep related queries that share a meaningful word with the topic.
+
+    Google Trends' related-query lists for niche topics often contain unrelated
+    viral searches ("what is a 401k"), so the relevance filter matters. Rising
+    queries come first, then top queries as context.
+    """
+    stems = topic_stems(topic)
+    kept, seen = [], set()
+    for signal in sorted(signals, key=lambda s: (s.kind != "rising", -s.growth_value)):
+        key = signal.query.lower().strip()
+        if key in seen or not (stems & topic_stems(signal.query)):
+            continue
+        seen.add(key)
+        kept.append(signal)
+    return kept[:limit]
+
+
+def window_label(window: str) -> str:
+    """'today 12-m' → 'past 12 months' (Google Trends date syntax to plain English)."""
+    match = re.fullmatch(r"today (\d+)-([dmy])", window.strip())
+    if not match:
+        return window
+    unit = {"d": "day", "m": "month", "y": "year"}[match.group(2)]
+    return f"past {match.group(1)} {unit}{'s' if match.group(1) != '1' else ''}"
+
+
+def trends_explore_url(topic: str, geo: str = "US", window: str = "today 12-m") -> str:
+    return "https://trends.google.com/trends/explore?" + urlencode({"q": topic, "geo": geo, "date": window})
 
 
 class SearchProvider(Protocol):
@@ -77,6 +119,22 @@ class SerpAPIClient:
             "related_searches": [r.get("query", "") for r in data.get("related_searches", []) if r.get("query")],
             "people_also_ask": [q.get("question", "") for q in data.get("related_questions", []) if q.get("question")],
         }
+
+    def trending_queries(self, topic: str, geo: str = "US", window: str = "today 12-m") -> list[TrendSignal]:
+        """Google Trends related queries (rising with % growth, and top) for ``topic``."""
+        if not self.available:
+            raise ProviderError(self.name, "SERPAPI_API_KEY is not set")
+        data = request_json(
+            self.name, "GET", SERPAPI_URL, session=self.session, timeout=self.timeout,
+            params={"engine": "google_trends", "q": topic, "geo": geo, "hl": "en", "date": window,
+                    "data_type": "RELATED_QUERIES", "api_key": self.api_key},
+        )
+        if data.get("error"):
+            raise ProviderError(self.name, data["error"])
+        related = data.get("related_queries") or {}
+        return [TrendSignal(query=item["query"], growth=str(item.get("value", "")),
+                            growth_value=int(item.get("extracted_value") or 0), kind=kind)
+                for kind in ("rising", "top") for item in related.get(kind) or [] if item.get("query")]
 
 
 @dataclass
@@ -170,6 +228,26 @@ class SearchChain:
             stale.errors = errors
             return stale
         return SearchOutcome(query=query, provider="offline", errors=errors)
+
+    def trending_queries(self, topic: str, geo: str = "US", window: str = "today 12-m",
+                         limit: int = 8) -> list[TrendSignal]:
+        """Relevant rising/top searches for ``topic`` (cached). Empty when Trends is unavailable."""
+        key = TTLCache.make_key("trends", topic.lower().strip(), geo, window)
+        if self.cache and (entry := self.cache.get(key)):
+            signals = [TrendSignal.model_validate(s) for s in entry[0]]
+        else:
+            if not self.keyword_provider or not self.keyword_provider.available:
+                return []
+            try:
+                signals = self.keyword_provider.trending_queries(topic, geo=geo, window=window)
+            except Exception as exc:  # noqa: BLE001 - the radar is optional; never fail the research turn
+                log.warning("trend data unavailable: %s", exc)
+                return []
+            if self.tracker:
+                self.tracker.record_search(self.keyword_provider.name)
+            if self.cache:
+                self.cache.set(key, [s.model_dump() for s in signals])
+        return relevant_trends(topic, signals, limit)
 
     def keyword_ideas(self, query: str) -> dict[str, list[str]]:
         key = TTLCache.make_key("keywords", query.lower().strip())

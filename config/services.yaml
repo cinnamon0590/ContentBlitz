@@ -24,6 +24,7 @@ research:
   chain: [serpapi, tavily, perplexity]   # tried in order; first success wins
   results_per_query: 5
   max_queries: 4
+  trends: {geo: US, window: today 12-m, max_signals: 8}   # Google Trends via SerpAPI (trend radar)
   perplexity_preset: fast             # Agent API preset: fast | low | medium | high | xhigh
   request_timeout_s: 25
 

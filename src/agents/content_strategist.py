@@ -5,7 +5,8 @@ trend report, market analysis, or competitive analysis. The strategist:
 
 * writes from the numbered research sources (no URLs are given to the model),
 * removes any URL that isn't in the source registry, and any citation id that doesn't exist,
-* appends a Sources & Provenance section built from the registry (not from model output).
+* appends a Sources & Provenance section built from the registry (not from model output),
+* guarantees a Trend Radar section (rendered from data, not the model) when the research has one.
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from src.agents import (
     scrub_body,
     topic_of,
 )
+from src.agents.research_agent import render_trend_radar
 from src.core import prompts
 from src.core.templates import outline, suggest_template
 from src.utils.content_optimization import citation_ids
@@ -50,6 +52,9 @@ def make_content_strategist(deps: AgentDeps):
                 + "\nSTATISTICS:\n" + "\n".join(f"- {s}" for s in research.statistics)
                 + "\nTRENDS:\n" + "\n".join(f"- {t}" for t in research.trends)
                 + f"\n\nSOURCES:\n{format_sources(sources)}")
+        if research.trend_signals:
+            user += "\n\nTREND RADAR:\n" + "\n".join(render_trend_radar(research.trend_signals,
+                                                                         research.trend_source_id))
         if feedback and state.get("quality_target") == "report":
             previous = (state.get("report") or {}).get("markdown", "")
             user += prompts.REVISION_NOTE.format(feedback=feedback, previous=previous[:6000])
@@ -62,6 +67,10 @@ def make_content_strategist(deps: AgentDeps):
             markdown = research.markdown.split("## Sources & Provenance")[0]
 
         markdown, notes = scrub_body(markdown, registry, {s.id for s in sources})
+        if research.trend_signals and not re.search(r"^##\s*Trend Radar", markdown, re.M | re.I):
+            radar = "\n".join(render_trend_radar(research.trend_signals, research.trend_source_id))
+            head, sep, tail = markdown.partition("\n## Recommendations")
+            markdown = f"{head.rstrip()}\n\n{radar}\n{sep}{tail}" if sep else f"{markdown.rstrip()}\n\n{radar}"
         if not markdown.lstrip().startswith("# "):
             markdown = f"# {template.title()}: {research.topic}\n\n{markdown}"
         title = re.match(r"#\s+(.+)", markdown.lstrip()).group(1).strip()

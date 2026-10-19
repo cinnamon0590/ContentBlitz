@@ -59,7 +59,7 @@ def test_synthesis_failure_uses_snippets(make_deps):
 
 def test_deep_research_capped_once(make_deps):
     deps = make_deps(providers=[FakeSearchProvider("perplexity", __import__("tests.conftest").conftest.sample_sources("perplexity"), answer="A [1]")])
-    _, deep = make_research_tools(deps)
+    _, deep, _ = make_research_tools(deps)
     first = json.loads(deep.invoke({"question": "q"}))
     second = json.loads(deep.invoke({"question": "q2"}))
     assert first["provider"] == "perplexity" and first["answer"] == "A [1]"

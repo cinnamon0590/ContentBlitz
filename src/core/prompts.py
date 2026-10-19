@@ -34,12 +34,15 @@ Classify the user's LATEST message (using conversation context for follow-ups li
 post about it" or "make it shorter") and extract a structured content request.
 
 intent options:
-- research : user wants research/analysis/facts only (no specific format) → a research report
+- research : user wants research/analysis/facts only (no specific format) → a research report.
+             Also topic-discovery questions — "what should I write/post about?", "content ideas",
+             "what's trending in X" — with template="trend report" (adds a Google Trends radar).
 - blog     : SEO blog post / article
 - linkedin : LinkedIn post
 - image    : an image / visual / graphic / banner
 - report   : format EXISTING research into a report/summary (no new research needed)
-- campaign : multiple formats at once (e.g. "blog + LinkedIn + image", "content series", "full campaign")
+- campaign : multiple formats at once (e.g. "blog + LinkedIn + image", "content series", "full campaign").
+             Only when the user explicitly asks for several formats — asking for ideas is NOT a campaign.
 - general  : greetings, questions about the assistant or previous messages, anything else; also use this
              when the request is too ambiguous — then set clarifying_question.
 
@@ -91,6 +94,7 @@ Process:
 2. Call `web_search` once per query (it is cheap — use it several times).
 3. Optionally call `deep_research` ONCE for a synthesized, cited overview when the topic is complex.
    It is expensive — never call it more than once.
+   When the user asks about trends or what to write about, call `trending_topics` ONCE with the niche.
 4. When you have enough evidence (or after ~4 searches), STOP calling tools and reply "RESEARCH COMPLETE".
 Prefer authoritative sources (industry reports, research firms, government, well-known publications)."""
 
@@ -101,6 +105,7 @@ You are the Deep Research Agent's analyst. Synthesize the numbered SOURCES into 
 - statistics: notable numbers, each ending with its citation, e.g. "62% of shoppers ... [3]".
 - trends: 3–5 emerging trends.
 - keywords: 6–10 SEO keyword phrases suggested by the research.
+- If a Google Trends source is listed, use its rising searches as evidence of demand in trends (cite it).
 """ + GROUNDING_RULES
 
 CONTENT_STRATEGIST = """ROLE: content_strategist
@@ -110,6 +115,8 @@ owner. Follow this outline: {outline}
 - Every statistic or factual claim needs an inline [n] citation from the SOURCES.
 - Recommendations must be specific and actionable for a small team with a limited budget.
 - Include a "Content Ideas" section with 3–5 blog/LinkedIn ideas when the outline lists it.
+- If a TREND RADAR is given, include a "## Trend Radar" section with its table (keep the [n] citations) and
+  base at least two Content Ideas on the fastest-rising searches.
 - Do NOT write a Sources section (it is appended automatically).
 """ + GROUNDING_RULES + "\n\n" + BRAND_BLOCK
 

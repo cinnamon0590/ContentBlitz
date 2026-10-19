@@ -22,7 +22,7 @@ contributors and AI coding agents. For setup, see `README.md` / `README.txt`. Fo
 | Images | gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → Pillow branded placeholder |
 | Memory | `InMemorySaver` (dev) / `SqliteSaver` (prod) keyed by `thread_id` |
 | UI | Streamlit: Chat · Content Dashboard · Research · Images · Export · Settings |
-| Tests | 160 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live` |
+| Tests | 174 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live` |
 
 ### Repository map
 
@@ -167,7 +167,7 @@ which supplies a scripted fake LLM and fake providers. **This is what makes each
 | **Writes** | `request` (`ContentRequest`), `route`, `pending_formats`, `next_after_research`, `final_response` (general) |
 | **LLM** | `fast` tier, structured output `ContentRequest` (prompt `QUERY_HANDLER`, with few-shot examples) |
 | **Context engineering** | The last 6 messages plus a summary of existing artifacts, so follow-ups like *"now make it a LinkedIn post"* and *"make the blog more casual"* resolve correctly |
-| **Deterministic rules** (`finalize_request`) | Skip research if matching research already exists (topic overlap) or when refining a draft. Validate campaign formats. Default the keyword. "Refine" only applies if the draft exists |
+| **Deterministic rules** (`finalize_request`) | "What should I write/post about?" without a named format becomes a research request with the `trend report` template, and report templates always route to the Content Strategist. Skip research if matching research already exists (topic overlap) or when refining a draft. Validate campaign formats. Default the keyword. "Refine" only applies if the draft exists |
 | **Fallbacks** | If the LLM fails, `heuristic_request` (keyword rules) takes over. If post-research routing fails, it defaults to `report`. If the general handler's LLM is down, it returns a friendly message |
 | **Guardrails** | Ambiguous requests get a clarifying question. General answers are labeled "model knowledge" |
 | **Test in isolation** | `pytest tests/unit/test_agent_query_handler.py` |
@@ -185,10 +185,11 @@ node({"user_input": "Write an SEO blog about email marketing for bakeries"})
 |---|---|
 | **Purpose** | Generate several strategic search queries, gather multi-source evidence, and synthesize findings with citations |
 | **Nodes** | `research_agent` ⇄ `research_tools` (ToolNode on `agent_scratch`) |
-| **Tools** | `web_search(query)`: cheap, called several times. `deep_research(question)`: expensive Perplexity/Tavily-advanced synthesis, **capped at 1 per request** (`TurnBudget`) |
+| **Tools** | `web_search(query)`: cheap, called several times. `deep_research(question)`: expensive Perplexity/Tavily-advanced synthesis, **capped at 1 per request** (`TurnBudget`). `trending_topics(niche)`: **trend radar**, Google Trends related queries via SerpAPI (rising with % growth, plus top), filtered for relevance to the niche |
+| **Trend radar** | Runs automatically for trend / "what should I write about" requests (`wants_trends`). The Google Trends explore page is registered as a real source, so every growth figure carries a valid `[n]`. `render_trend_radar` adds a **Trend Radar** table to the research brief, and the Content Strategist keeps it in the report even if the model drops it. The top rising searches go into the Query Handler's context, so "write about the fastest-rising one" resolves |
 | **Reads / writes** | Reads `request`, `sources`. Writes `research` (`ResearchReport`) and `sources` (registry with stable ids) |
 | **LLM** | `fast` model for the tool loop (prompt `RESEARCH_AGENT`). `smart` model for synthesis (structured `ResearchSynthesis`, prompt `RESEARCH_SYNTHESIS`) |
-| **Citation integrity** | Retrieved sources go into the registry, which assigns `[n]` ids. The model sees a numbered list without URLs. Finding ids not in the list (for example `[99]`) are dropped |
+| **Citation integrity** | Off-topic results (no meaningful word shared with the topic) are dropped first (`drop_off_topic`, never all of them). Retrieved sources go into the registry, which assigns `[n]` ids. The model sees a numbered list without URLs. Finding ids not in the list (for example `[99]`) are dropped |
 | **Fallbacks** | If the model skips tools, the agent runs 3 strategic fallback queries itself. If a provider fails, the next provider is tried. If every provider fails, it uses stale cache. If nothing works, it labels the report `model_knowledge_only` and omits statistics. If synthesis fails, it builds findings from source snippets |
 | **Cost control** | 30-min TTL cache, max tool iterations (6), deep-research cap, cheap model for the loop |
 | **Test in isolation** | `pytest tests/unit/test_agent_research.py` |

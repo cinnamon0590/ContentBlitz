@@ -214,6 +214,14 @@ def test_render_response_empty():
     assert "couldn't produce" in render_response({})
 
 
+def test_what_should_i_post_gets_trend_radar_report(app_factory):
+    app, _, _ = app_factory(default_roles("research", template="trend report", topic="bakery marketing"))
+    result = app.run("What should I post about this month for my bakery?", thread_id="trends")
+    assert result.outputs == ["research", "report"]
+    assert "## Trend Radar" in result.artifacts["report"]["markdown"] and "bakery newsletter" in result.response
+    assert any(s["publisher"] == "trends.google.com" for s in result.sources)
+
+
 def test_linkedin_hook_alternatives_and_swap(app_factory):
     roles = default_roles("linkedin")
     roles["linkedin_writer"] = {**roles["linkedin_writer"], "hook_options": [

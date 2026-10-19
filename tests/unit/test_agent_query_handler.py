@@ -108,3 +108,26 @@ def test_general_handler_llm_down(config):
                      images=None, validator=None, tracker=None)
     out = make_general_handler(deps)({"messages": [HumanMessage("hi")]})
     assert "trouble reaching" in out["final_response"]
+
+
+def test_topic_discovery_becomes_trend_report():
+    from src.agents.query_handler import finalize_request
+    from src.workflow.state_management import ContentRequest
+
+    campaign = ContentRequest(intent="campaign", topic="bakery content", formats=["blog", "linkedin"])
+    request = finalize_request(campaign, {"user_input": "What should I post about this month for my bakery?"})
+    assert (request.intent, request.template, request.formats, request.needs_research) == (
+        "research", "trend report", [], True)
+    named = ContentRequest(intent="linkedin", topic="bakery")
+    assert finalize_request(named, {"user_input": "Give me LinkedIn post ideas for my bakery"}).intent == "linkedin"
+
+
+def test_report_template_always_routes_to_report(make_deps):
+    from src.agents.query_handler import make_post_research_router
+
+    roles = default_roles("research")
+    roles["post_research_router"] = {"next": "blog", "reason": "model would pick a blog"}
+    node = make_post_research_router(make_deps(roles))
+    state = {"request": {"intent": "research", "template": "trend report"}, "user_input": "what should I post?"}
+    assert node(state) == {"next_after_research": "report"}
+    assert node({"request": {"intent": "research"}, "user_input": "x"}) == {"next_after_research": "blog"}

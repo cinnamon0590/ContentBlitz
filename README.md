@@ -40,13 +40,14 @@ API goes down.
 | **Images** | Art-director prompt enhancement with brand palette; gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → branded placeholder; Pillow validation; PNG + metadata |
 | **Quality pipeline** | Deterministic scoring (SEO, structure, readability, citations, brand voice), with automatic revision loops and suggestions |
 | **Brand voice** | One brand profile across all formats, rule-based checks, and **learn-from-sample** |
+| **Trend radar** | "What should I post about?" → rising Google Trends searches for your niche with their growth, cited like any source, with one-click LinkedIn / blog drafts in the 🔎 Research tab |
 | **Templates** | Blog: how-to/listicle/comparison/thought leadership · LinkedIn: insights/story/tips/announcement · Reports: trend/market/competitive |
 | **Workflows** | Multi-turn refinement ("make it shorter"), research-first, and **campaign / content series** (blog + LinkedIn + image in one request) |
 | **Memory** | LangGraph checkpointer (in-memory or SQLite) per conversation `thread_id` |
 | **Guardrails** | Prompt-injection and policy screens, PII redaction, moderation, citation integrity, tool and revision caps, per-request budget |
 | **UI** | Streamlit with tabs: Chat · Content Dashboard (edit/score/refine) · Research panel · Image gallery · Export · Settings |
 | **Export** | Markdown, HTML, WordPress blocks, TXT, PDF, PNG/JPG, ZIP bundle |
-| **Quality of engineering** | 160 offline tests (~98% coverage), live-API tests, Docker, dev/prod configs, JSON logs, cost tracking |
+| **Quality of engineering** | 174 offline tests (~98% coverage), live-API tests, Docker, dev/prod configs, JSON logs, cost tracking |
 
 ---
 
@@ -163,6 +164,7 @@ Type these in the **Chat** tab. Each line is one turn in the same conversation u
 | Research → blog | (same thread) `Now write an SEO blog post from that research` | No new research. The Blog Writer runs keyword research, writes the post, the quality gate scores it (and revises if it scores under 70), and the result shows meta, slug and score |
 | Blog directly | `Write a how-to blog post about email marketing for local bakeries` | Research first, then the blog (how-to template) |
 | LinkedIn | `Create a LinkedIn post about why fast replies win more customers` | Research, then the trends tool, then a 1300–1600 character post with 8–12 hashtags; sources go into a "first comment" |
+| Trend radar | `What should I post about this month for my bakery?` | Research plus Google Trends (via SerpAPI): a trend report with a cited **Trend Radar** table and content ideas built on the fastest-rising searches. Follow up with `Write a LinkedIn post about the fastest-rising one` |
 | Hook options | (after a LinkedIn post) Content Dashboard → **Hook options** | Pick one of the scored alternative openings; the post is rewritten and re-scored |
 | Refine | `Make the LinkedIn post more casual and shorter` | Refine mode: the previous draft plus your instructions; no new research |
 | Image | `Make an image of a cozy coffee shop at sunrise for our autumn campaign` | Prompt enhancement, then gpt-image-1 (or a fallback); shown in Chat and in the Images tab |
@@ -219,7 +221,7 @@ Each agent factory (`make_query_handler`, `make_research_agent`, `make_blog_writ
 ## 8. Testing
 
 ```bash
-pytest                         # 160 offline tests (unit + integration + e2e UI + notebook); no keys needed
+pytest                         # 174 offline tests (unit + integration + e2e UI + notebook); no keys needed
 pytest --cov=src               # coverage report (~98%; web_app UI code is excluded and smoke-tested instead)
 pytest tests/unit/test_agent_research.py      # test one agent on its own
 pytest -m live                 # real API calls (needs .env keys; costs a few cents)

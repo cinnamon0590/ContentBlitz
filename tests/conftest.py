@@ -278,6 +278,15 @@ class FakeKeywords:
         return {"related_searches": [f"{query} tips", f"{query} examples"],
                 "people_also_ask": [f"What is {query}?"]}
 
+    def trending_queries(self, topic, geo="US", window="today 12-m"):
+        from src.workflow.state_management import TrendSignal
+
+        word = topic.split()[0]
+        return [TrendSignal(query=f"ai {word} ideas", growth="Breakout", growth_value=5000),
+                TrendSignal(query="what is a 401k", growth="Breakout", growth_value=9000),  # off-topic noise
+                TrendSignal(query=f"{word} newsletter", growth="+190%", growth_value=190),
+                TrendSignal(query=f"{word} near me", growth="100", growth_value=100, kind="top")]
+
 
 def build_fake_deps(config, cache_dir, roles: dict | None = None, search_fail: bool = False,
                     image_fail: set | None = None, threshold: float = 70, providers: list | None = None):

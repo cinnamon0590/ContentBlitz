@@ -146,6 +146,15 @@ class ResearchFinding(BaseModel):
     source_ids: list[int] = Field(default_factory=list)
 
 
+class TrendSignal(BaseModel):
+    """A related search from Google Trends (via SerpAPI) with its change in search interest."""
+
+    query: str
+    growth: str = ""  # as Google reports it: "+190%", "Breakout" (> +5000%), or a 0–100 index for top queries
+    growth_value: int = 0
+    kind: Literal["rising", "top"] = "rising"
+
+
 class ResearchReport(BaseModel):
     topic: str
     queries: list[str] = Field(default_factory=list)
@@ -154,6 +163,8 @@ class ResearchReport(BaseModel):
     statistics: list[str] = Field(default_factory=list)
     trends: list[str] = Field(default_factory=list)
     keywords: list[str] = Field(default_factory=list)
+    trend_signals: list[TrendSignal] = Field(default_factory=list)
+    trend_source_id: int = 0  # citation id of the Google Trends source, when trend_signals is set
     markdown: str = ""
     provenance: Provenance = Field(default_factory=Provenance)
 
