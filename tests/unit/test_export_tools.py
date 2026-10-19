@@ -80,3 +80,11 @@ def test_bundle_zip(blog, image):
     assert "sources.json" in names and any(n.endswith(".wordpress.html") for n in names)
     assert any(n.startswith("image/") and n.endswith(".png") for n in names)
     assert ex.provenance_of(blog).grounding == "live_research"
+
+
+def test_pdf_drops_emoji_the_font_cannot_draw(caplog):
+    from src.utils.export_tools import strip_emoji, to_pdf
+
+    assert strip_emoji("📚 Sources for this post: ⭐⭐ great 👍🏽") == " Sources for this post: great "
+    pdf = to_pdf("# Title ✨\n\n📚 Sources for this post:\n\n- one")
+    assert pdf[:4] == b"%PDF" and "missing the following glyphs" not in caplog.text

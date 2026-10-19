@@ -136,8 +136,18 @@ def _find_unicode_font() -> str | None:
     return next((p for p in _PDF_FONT_CANDIDATES if Path(p).exists()), None)
 
 
+# PDF fonts have no colour-emoji glyphs (fpdf would drop them with a warning), so emoji are removed in PDFs only.
+_EMOJI = re.compile("[\U0001F000-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF\uFE0F\u200D]")
+
+
+def strip_emoji(text: str) -> str:
+    return re.sub(r"[ \t]{2,}", " ", _EMOJI.sub("", text))
+
+
 def to_pdf(markdown_text: str, title: str = "ContentBlitz export") -> bytes:
     from fpdf import FPDF
+
+    markdown_text, title = strip_emoji(markdown_text), strip_emoji(title)
 
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
