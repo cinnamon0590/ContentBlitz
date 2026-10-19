@@ -103,7 +103,7 @@ sequenceDiagram
     QH->>RA: route=research
     loop tool loop (≤ 6)
         RA->>SC: web_search(query) / deep_research (≤1)
-        SC-->>RA: sources (cached 30 min; fallback chain)
+        SC-->>RA: sources (cached 30 min, fallback chain)
     end
     RA->>RA: register sources → ids [1..n] · cited synthesis
     RA->>QH: post-research routing → blog
