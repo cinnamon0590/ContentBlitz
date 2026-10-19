@@ -6,6 +6,18 @@
 .cb-hero h1 { font-size: 1.9rem; margin: 0; }
 .cb-tag { font-size: .8rem; padding: .1rem .55rem; border-radius: 999px;
           border: 1px solid rgba(128,128,128,.4); opacity: .85; }
+/* Accessibility: section headings are real h2s (no skipped levels) but keep a compact size */
+[data-testid="stHeading"] h2 { font-size: 1.35rem; }
+/* Captions: Streamlit's faded grey is 3.7:1 on white (WCAG AA needs 4.5:1). Inheriting the text colour at
+   80% opacity gives 6.7:1 in light mode and 11.7:1 in dark mode. */
+[data-testid="stCaptionContainer"] { color: inherit; opacity: .8; }
+/* Visible keyboard focus */
+button:focus-visible, a:focus-visible, [role="tab"]:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 /* Larger tap targets for mobile */
 button[kind] { min-height: 2.6rem; }
-@media (max-width: 640px) { .cb-hero h1 { font-size: 1.4rem; } }
+[data-testid="stButtonGroup"] button { min-height: 2.5rem; }
+@media (max-width: 640px) {
+  .cb-hero { flex-wrap: wrap; gap: .35rem .75rem; }
+  .cb-hero h1 { font-size: 1.4rem; }
+  .cb-tag { white-space: nowrap; }
+}

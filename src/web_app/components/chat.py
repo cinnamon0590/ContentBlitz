@@ -55,7 +55,8 @@ def render_chat() -> None:
     image = app.state(thread_id()).get("image")
     last = st.session_state.get("last_result")
     if image and last and "image" in last.outputs and Path(image["path"]).exists():
-        st.image(image["path"], caption=image.get("alt_text", ""), use_container_width=True)
+        st.image(image["path"], caption=image.get("alt_text", ""), alt=image.get("alt_text") or "Generated marketing image",
+                 use_container_width=True)
 
     prompt = st.chat_input("Ask for research, a blog post, a LinkedIn post, an image — or a full campaign…")
     prompt = prompt or st.session_state.pop("pending_prompt", None)

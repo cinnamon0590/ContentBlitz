@@ -116,7 +116,8 @@ def render_gallery() -> None:
     for image in reversed(images):
         with st.container(border=True):
             cols = st.columns([3, 2])
-            cols[0].image(image["path"], caption=image.get("alt_text", ""), use_container_width=True)
+            cols[0].image(image["path"], caption=image.get("alt_text", ""),
+                          alt=image.get("alt_text") or "Generated marketing image", use_container_width=True)
             with cols[1]:
                 st.markdown(f"**Provider:** `{image['provider']}`  \n**Size:** {image['width']}×{image['height']}")
                 st.markdown(f"**Your idea:** {image['original_prompt']}")

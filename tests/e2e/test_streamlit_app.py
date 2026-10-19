@@ -42,7 +42,7 @@ def test_campaign_turn_populates_every_tab(ui):
     markdown = " ".join(m.value for m in at.markdown)
     assert "SEO Blog Post" in markdown and "LinkedIn Post" in markdown
     assert at.metric and "Quality score" in [m.label for m in at.metric]  # dashboard
-    assert any("Sources (3)" in s.value for s in at.subheader)  # research panel
+    assert any("Sources (3)" in s.value for s in at.header)  # research panel
     labels = [b.label for b in at.button]
     assert "Save edits & re-score" in " ".join(labels)
 

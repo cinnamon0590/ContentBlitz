@@ -12,7 +12,7 @@ def _trend_radar(report: ResearchReport) -> None:
     """Rising Google searches for the niche, each one a click away from a draft."""
     rising = [s for s in report.trend_signals if s.kind == "rising"]
     top = [s.query for s in report.trend_signals if s.kind == "top"]
-    st.subheader("📈 Trend radar")
+    st.header("📈 Trend radar")
     st.caption(f"Searches gaining interest on Google Trends (“Breakout” = more than +5000%). "
                f"Cited as [{report.trend_source_id}] in reports.")
     for i, signal in enumerate(rising):
@@ -44,7 +44,7 @@ def render_research_panel() -> None:
         return
     if research:
         report = ResearchReport.model_validate(research)
-        st.subheader(f"Research: {report.topic}")
+        st.header(f"Research: {report.topic}")
         st.caption(report.provenance.label)
         st.markdown(report.summary)
         cols = st.columns(2)
@@ -68,7 +68,7 @@ def render_research_panel() -> None:
                 for q in report.queries:
                     st.markdown(f"- {q}")
 
-    st.subheader(f"Sources ({len(sources)})")
+    st.header(f"Sources ({len(sources)})")
     st.caption("Every source retrieved in this conversation, the outputs that used it, and where it came from. "
                "Citation numbers [n] stay the same across follow-up requests.")
     rows = [{"#": s["id"], "Title": s.get("title") or s.get("publisher"), "URL": s["url"],

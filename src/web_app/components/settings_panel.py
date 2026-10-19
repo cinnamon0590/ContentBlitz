@@ -20,7 +20,7 @@ def render_settings_panel() -> None:
     left, right = st.columns([3, 2])
 
     with left:
-        st.subheader("Brand voice")
+        st.header("Brand voice")
         st.caption("Every agent uses this profile, and the quality score checks against it.")
         with st.form("brand-form"):
             c1, c2 = st.columns(2)
@@ -74,7 +74,7 @@ def render_settings_panel() -> None:
             st.rerun()
 
     with right:
-        st.subheader("Services")
+        st.header("Services")
         status = app.service_status()
         st.markdown(f"**LLM:** `{status['llm']}`  \n**Memory:** `{status['checkpointer']}`")
         for key, present in status["keys"].items():
@@ -84,7 +84,7 @@ def render_settings_panel() -> None:
         st.markdown("**Research fallback chain:** " + (" → ".join(status["research_chain"]) or "_none configured_"))
         st.markdown("**Image fallback chain:** " + " → ".join(status["image_chain"]))
 
-        st.subheader("Last request usage")
+        st.header("Last request usage")
         usage = (st.session_state.get("last_result").usage if st.session_state.get("last_result") else {}) or {}
         c1, c2 = st.columns(2)
         c1.metric("Tokens", f"{usage.get('total_tokens', 0):,}")
@@ -92,7 +92,7 @@ def render_settings_panel() -> None:
         st.caption(f"Searches: {usage.get('searches', {})} · Images: {usage.get('images', {})} · "
                    f"Cache hits: {usage.get('cache_hits', 0)} · Time: {usage.get('elapsed_s', 0)}s")
 
-        st.subheader("Maintenance")
+        st.header("Maintenance")
         if st.button("🧹 Clear research cache"):
             st.toast(f"Removed {app.deps.search.cache.clear() if app.deps.search.cache else 0} cached results")
         if st.button("🆕 Start a new conversation"):

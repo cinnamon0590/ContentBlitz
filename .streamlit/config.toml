@@ -1,0 +1,9 @@
+# Streamlit settings (read when the app is started from the project root, locally or in Docker).
+
+[theme]
+# Streamlit's default red (#ff4b4b) fails WCAG AA contrast: 3.3:1 for white text on primary buttons and
+# 2.9:1 for selected segmented-control text on its tint. #B42318 gives 6.6:1 and 5.6:1 (AA needs 4.5:1).
+primaryColor = "#B42318"
+
+[browser]
+gatherUsageStats = false

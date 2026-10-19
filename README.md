@@ -45,7 +45,7 @@ API goes down.
 | **Workflows** | Multi-turn refinement ("make it shorter"), research-first, and **campaign / content series** (blog + LinkedIn + image in one request) |
 | **Memory** | LangGraph checkpointer (in-memory or SQLite) per conversation `thread_id` |
 | **Guardrails** | Prompt-injection and policy screens, PII redaction, moderation, citation integrity, tool and revision caps, per-request budget |
-| **UI** | Streamlit with tabs: Chat · Content Dashboard (edit/score/refine) · Research panel · Image gallery · Export · Settings |
+| **UI** | Streamlit with tabs: Chat · Content Dashboard (edit/score/refine) · Research panel · Image gallery · Export · Settings. **Accessible and mobile-ready**: 0 axe-core violations (WCAG 2.2 AA) on every tab at desktop and 390 px phone width, real image alt text, AA-contrast theme (`.streamlit/config.toml`), no horizontal scrolling on phones |
 | **Export** | Markdown, HTML, WordPress blocks, TXT, PDF, PNG/JPG, ZIP bundle |
 | **Quality of engineering** | 185 offline tests (~98% coverage), live-API tests for all three LLM providers, GitHub Actions CI (lint + tests on Python 3.12 and 3.14, 90% coverage gate), Docker, dev/prod configs, JSON logs, cost tracking |
 
