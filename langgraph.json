@@ -1,7 +1,9 @@
 {
-  "dependencies": ["."],
+  "dependencies": [
+    "."
+  ],
   "graphs": {
-    "contentblitz": "./src/workflow/langgraph_workflow.py:make_studio_graph"
+    "contentblitz": "./src/workflow/studio.py:graph"
   },
   "env": ".env",
   "python_version": "3.12"

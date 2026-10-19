@@ -42,5 +42,5 @@ nbformat>=5.10
 nbclient>=0.10
 ipykernel>=6.29
 
-# --- Optional: local LangGraph Studio (`langgraph dev`) ---
-# langgraph-cli[inmem]>=0.4
+# --- Local LangGraph Studio / dev server (`langgraph dev`) ---
+langgraph-cli[inmem]>=0.4

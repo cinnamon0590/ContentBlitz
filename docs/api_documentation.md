@@ -115,7 +115,7 @@ Shared helpers (`src/agents/__init__.py`): `AgentDeps`, `TurnBudget`, `tool_loop
 |---|---|
 | `build_graph(deps, checkpointer=None)` | Compile the full `StateGraph` |
 | `make_checkpointer(config)` | `InMemorySaver` or `SqliteSaver` |
-| `make_studio_graph()` | Factory for `langgraph dev` (`langgraph.json`) |
+| `make_studio_graph()` | Builds the platform graph (no checkpointer); `src/workflow/studio.py` calls it once at import and `langgraph.json` points at `studio.py:graph` |
 | `make_input_guardrail`, `make_quality_gate`, `make_finalize`, `render_response` | Control nodes |
 
 Routing functions (`src.core.router`): `route_input`, `route_initial`, `route_after_research`,

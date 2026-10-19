@@ -51,8 +51,11 @@ pip install "langgraph-cli[inmem]"
 langgraph dev                    # opens Studio with the `contentblitz` graph
 ```
 
-`langgraph.json` points to `src/workflow/langgraph_workflow.py:make_studio_graph`. The platform supplies
-persistence. Invoke it with input `{"user_input": "Research coffee shop marketing trends"}`, and optionally
+`langgraph.json` points to `src/workflow/studio.py:graph`, a graph compiled once at import. (`langgraph dev`
+calls a graph *factory* on its async event loop for every request and rejects blocking calls there, and building
+the graph creates the cache folder, so a factory fails with `BlockingError`.) The platform supplies
+persistence. Verified with `langgraph dev`: Studio draws all 16 nodes, and research, general and guardrail runs
+complete through its API. Invoke it with input `{"user_input": "Research coffee shop marketing trends"}`, and optionally
 `"brand": {...}`.
 
 ## 6. Observability
