@@ -47,7 +47,7 @@ API goes down.
 | **Guardrails** | Prompt-injection and policy screens, PII redaction, moderation, citation integrity, tool and revision caps, per-request budget |
 | **UI** | Streamlit with tabs: Chat · Content Dashboard (edit/score/refine) · Research panel · Image gallery · Export · Settings |
 | **Export** | Markdown, HTML, WordPress blocks, TXT, PDF, PNG/JPG, ZIP bundle |
-| **Quality of engineering** | 185 offline tests (~98% coverage), live-API tests for all three LLM providers, Docker, dev/prod configs, JSON logs, cost tracking |
+| **Quality of engineering** | 185 offline tests (~98% coverage), live-API tests for all three LLM providers, GitHub Actions CI (lint + tests on Python 3.12 and 3.14, 90% coverage gate), Docker, dev/prod configs, JSON logs, cost tracking |
 
 ---
 
@@ -236,6 +236,9 @@ ruff check src tests           # lint
   and SQLite persistence.
 - **E2E**: Streamlit `AppTest` drives the real UI against offline fakes; the walkthrough notebook is executed
   top to bottom in offline mode. `-m live` exercises real providers.
+
+- **CI**: `.github/workflows/ci.yml` runs `ruff` and the offline suite on Python 3.12 and 3.14 for every push
+  and pull request, and fails below 90% coverage. No secrets are needed.
 
 The fakes are in `tests/conftest.py`. `FakeChatModel` dispatches on each prompt's `ROLE:` header, and
 `build_fake_deps()` builds a complete offline `AgentDeps`.
