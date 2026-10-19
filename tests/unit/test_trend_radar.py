@@ -140,3 +140,48 @@ def test_window_label_and_router_context():
     summary = _context_summary(state)
     assert "trend radar (fastest-rising first): viral caramel apple (+1,800%)" in summary
     assert "bakery near me" not in summary
+
+
+class _OnlyShortQueries(FakeKeywords):
+    """Like Google Trends: no data for long phrases."""
+
+    def __init__(self):
+        self.asked = []
+
+    def trending_queries(self, topic, geo="US", window="today 12-m"):
+        self.asked.append(topic)
+        if len(topic.split()) > 2:
+            from src.integrations import ProviderError
+
+            raise ProviderError("serpapi", "Google Trends hasn't returned any results for this query.")
+        return super().trending_queries(topic, geo, window)
+
+
+def test_trend_niches_shrink_to_the_core():
+    from src.integrations.serp_client import trend_niches
+
+    assert trend_niches("latest email marketing trends for local bakeries") == [
+        "latest email marketing trends for local bakeries", "email marketing bakeries", "email marketing"]
+    assert trend_niches("bakery") == ["bakery"] and trend_niches("") == []
+
+
+def test_find_trends_falls_back_to_a_shorter_niche(tmp_path):
+    provider = _OnlyShortQueries()
+    chain = SearchChain([], cache=TTLCache(tmp_path), keyword_provider=provider)
+    niche, signals = chain.find_trends("latest email marketing trends for local bakeries")
+    assert niche == "email marketing" and [s.query for s in signals][:2] == ["ai email ideas", "email newsletter"]
+    assert provider.asked == ["latest email marketing trends for local bakeries", "email marketing bakeries",
+                              "email marketing"]
+    assert SearchChain([], keyword_provider=None).find_trends("x") == ("x", [])
+
+
+def test_no_trend_data_warning_is_specific(make_deps):
+    class NoData(FakeKeywords):
+        def trending_queries(self, *args, **kwargs):
+            return []
+
+    deps = make_deps()
+    deps.search.keyword_provider = NoData()
+    state = run(deps, TREND_STATE)
+    assert any("has no related searches for “bakery marketing”" in w for w in state["warnings"])
+    assert not any("needs a SerpAPI key" in w for w in state["warnings"])

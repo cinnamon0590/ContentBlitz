@@ -56,6 +56,21 @@ def relevant_trends(topic: str, signals: list[TrendSignal], limit: int = 8) -> l
     return kept[:limit]
 
 
+_NICHE_FILLER = _TREND_STOPWORDS | {"latest", "trend", "trends", "trending", "local", "new", "top", "research",
+                                    "guide", "strategy", "strategies", "about", "should", "write"}
+
+
+def trend_niches(topic: str, max_candidates: int = 3) -> list[str]:
+    """Queries to try on Google Trends, most specific first.
+
+    Trends has no data for long phrases ("latest email marketing trends for local bakeries"), but has plenty for
+    their core ("email marketing"). Capped to protect the SerpAPI quota (each candidate is one search).
+    """
+    core = [w for w in re.findall(r"[a-z0-9]+", topic.lower()) if w not in _NICHE_FILLER]
+    candidates = [topic.strip(), " ".join(core), " ".join(core[:2]), core[0] if core else ""]
+    return list(dict.fromkeys(c for c in candidates if c))[:max_candidates]
+
+
 def window_label(window: str) -> str:
     """'today 12-m' → 'past 12 months' (Google Trends date syntax to plain English)."""
     match = re.fullmatch(r"today (\d+)-([dmy])", window.strip())
@@ -241,13 +256,26 @@ class SearchChain:
             try:
                 signals = self.keyword_provider.trending_queries(topic, geo=geo, window=window)
             except Exception as exc:  # noqa: BLE001 - the radar is optional; never fail the research turn
-                log.warning("trend data unavailable: %s", exc)
+                log.info("no trend data for %r: %s", topic, exc)
                 return []
             if self.tracker:
                 self.tracker.record_search(self.keyword_provider.name)
             if self.cache:
                 self.cache.set(key, [s.model_dump() for s in signals])
         return relevant_trends(topic, signals, limit)
+
+    @property
+    def trends_available(self) -> bool:
+        return bool(self.keyword_provider and self.keyword_provider.available
+                    and hasattr(self.keyword_provider, "trending_queries"))
+
+    def find_trends(self, topic: str, geo: str = "US", window: str = "today 12-m",
+                    limit: int = 8) -> tuple[str, list[TrendSignal]]:
+        """``(niche, signals)`` for the most specific version of ``topic`` that Google Trends has data for."""
+        for niche in trend_niches(topic):
+            if signals := self.trending_queries(niche, geo=geo, window=window, limit=limit):
+                return niche, signals
+        return topic, []
 
     def keyword_ideas(self, query: str) -> dict[str, list[str]]:
         key = TTLCache.make_key("keywords", query.lower().strip())

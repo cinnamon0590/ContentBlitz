@@ -89,7 +89,7 @@ def make_research_tools(deps: AgentDeps) -> list:
     @tool
     def trending_topics(niche: str) -> str:
         """Trend radar: rising Google searches related to a niche, with growth in search interest. Use once."""
-        return _trend_payload(niche, deps.search.trending_queries(
+        return _trend_payload(*deps.search.find_trends(
             niche, geo=trends.get("geo", "US"), window=trends.get("window", "today 12-m"),
             limit=trends.get("max_signals", 8)))
 
@@ -188,8 +188,7 @@ def synthesize(deps: AgentDeps, state: ContentState, payloads: list[dict], queri
         niche = trend_payloads[0].get("niche") or topic
         signals = [TrendSignal.model_validate(s) for p in trend_payloads for s in p.get("signals", [])]
     elif wants_trends(state):
-        niche = topic
-        signals = deps.search.trending_queries(topic, geo=geo, window=window, limit=trend_cfg.get("max_signals", 8))
+        niche, signals = deps.search.find_trends(topic, geo=geo, window=window, limit=trend_cfg.get("max_signals", 8))
     else:
         niche, signals = topic, []
     if not any(p.get("results") for p in payloads):
@@ -221,7 +220,9 @@ def synthesize(deps: AgentDeps, state: ContentState, payloads: list[dict], queri
             used.append(trend)  # beyond MAX_SOURCES on purpose: the radar must stay citable
             cached_flags.append(all(cached_flags) if cached_flags else False)
     elif wants_trends(state):
-        warnings.append("Trend radar unavailable (Google Trends needs a SerpAPI key or returned no related searches).")
+        warnings.append("Trend radar unavailable: Google Trends needs a SerpAPI key." if not deps.search.trends_available
+                        else f"Trend radar: Google Trends has no related searches for “{topic}” or a shorter version "
+                             "of it, so the report has no trend table.")
 
     if not used:
         grounding = "model_knowledge_only"
