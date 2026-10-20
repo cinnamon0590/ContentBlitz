@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from src.web_app.components import brand, get_app, new_thread
+from src.web_app.components import brand, get_app, new_thread, save_brand
 from src.workflow.state_management import VOICE_ARCHETYPES, BrandProfile
 
 EMOJI_LABELS = {"none": "None", "light": "Light (0–3 per post)", "heavy": "Heavy (emoji bullets)"}
@@ -50,13 +50,13 @@ def render_settings_panel() -> None:
             palette = [colors[i].color_picker(f"Brand color {i + 1}", (current.color_palette + ["#FFFFFF"] * 3)[i])
                        for i in range(3)]
             if st.form_submit_button("Save brand profile", type="primary"):
-                st.session_state.brand = current.model_copy(update={
+                kept = save_brand(current.model_copy(update={
                     "name": name, "industry": industry, "location": location, "audience": audience, "tone": tone,
                     "voice_archetype": archetype, "emoji_level": emoji, "avg_sentence_words": sentence,
                     "values": _split(values), "banned_words": _split(banned), "required_phrases": _split(required),
                     "cta": cta, "visual_style": style, "color_palette": palette,
-                }).model_dump()
-                st.toast("Brand profile saved")
+                }))
+                st.toast("Brand profile saved" if kept else "Brand profile saved for this session only (disk not writable)")
 
         learned_note = st.session_state.pop("voice_learned", "")  # shown after the rerun that applies it
         with st.expander("✨ Learn my brand voice from sample content", expanded=bool(learned_note)):
@@ -67,14 +67,14 @@ def render_settings_panel() -> None:
             if st.button("Analyze voice") and sample.strip():
                 with st.spinner("Analyzing your writing…"):
                     learned = app.learn_brand_voice(sample, current)
-                st.session_state.brand = learned.model_dump()
+                save_brand(learned)
                 st.session_state.voice_learned = (
                     f"Learned tone: **{learned.tone}** · audience: **{learned.audience}** · persona: "
                     f"**{learned.voice_archetype or 'none'}** · ~{learned.avg_sentence_words:.0f} words per "
                     f"sentence · emojis: **{learned.emoji_level}**. The fields above now use it.")
                 st.rerun()
         if st.button("Reset brand profile"):
-            st.session_state.brand = BrandProfile().model_dump()
+            save_brand(BrandProfile())
             st.rerun()
 
     with right:

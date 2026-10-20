@@ -13,7 +13,9 @@ APP = str(Path(__file__).resolve().parents[2] / "src" / "web_app" / "streamlit_a
 
 
 @pytest.fixture
-def ui(config, make_deps):
+def ui(config, make_deps, tmp_path, monkeypatch):
+    monkeypatch.setenv("CONTENTBLITZ_BRAND_FILE", str(tmp_path / "brand_profile.json"))  # never the real file
+
     def _make(roles=None):
         at = AppTest.from_file(APP, default_timeout=60)
         at.session_state["app"] = ContentBlitz(config, deps=make_deps(roles or default_roles("campaign")),
@@ -56,6 +58,16 @@ def test_example_button_and_settings_save(ui):
     name_input.set_value("Bean There Café")
     next(b for b in at.button if b.label == "Save brand profile").click().run()
     assert at.session_state["brand"]["name"] == "Bean There Café"
+
+
+def test_saved_brand_survives_a_restart(ui, tmp_path):
+    at = ui(default_roles("general")).run()
+    next(t for t in at.text_input if t.label == "Business name").set_value("Crumb & Co")
+    next(b for b in at.button if b.label == "Save brand profile").click().run()
+    assert '"name": "Crumb & Co"' in (tmp_path / "brand_profile.json").read_text()
+    fresh = ui(default_roles("general")).run()  # a new browser session, as after a restart or reload
+    assert fresh.session_state["brand"]["name"] == "Crumb & Co"
+    assert next(t for t in fresh.text_input if t.label == "Business name").value == "Crumb & Co"
 
 
 def test_learn_brand_voice_confirms_after_the_rerun(ui):

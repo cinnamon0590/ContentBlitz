@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import uuid
+from pathlib import Path
 
 import streamlit as st
 
@@ -46,9 +48,36 @@ def new_thread() -> None:
     st.session_state.pop("last_result", None)
 
 
+BRAND_FILE_ENV = "CONTENTBLITZ_BRAND_FILE"
+
+
+def brand_file() -> Path:
+    """Where the brand profile is kept between restarts (``outputs/`` is git-ignored and mounted in Docker)."""
+    return Path(os.environ.get(BRAND_FILE_ENV) or Path(__file__).resolve().parents[3] / "outputs" / "brand_profile.json")
+
+
+def load_saved_brand() -> BrandProfile:
+    try:
+        return BrandProfile.model_validate_json(brand_file().read_text())
+    except (OSError, ValueError):  # no file yet, or one from an incompatible version
+        return BrandProfile()
+
+
+def save_brand(profile: BrandProfile) -> bool:
+    """Use ``profile`` for this session and write it to disk so it survives a restart or a page reload."""
+    st.session_state.brand = profile.model_dump()
+    try:
+        path = brand_file()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(profile.model_dump_json(indent=2))
+        return True
+    except OSError:  # read-only disk: still kept for this session
+        return False
+
+
 def brand() -> BrandProfile:
     if "brand" not in st.session_state:
-        st.session_state.brand = BrandProfile().model_dump()
+        st.session_state.brand = load_saved_brand().model_dump()
     return BrandProfile.model_validate(st.session_state.brand)
 
 
