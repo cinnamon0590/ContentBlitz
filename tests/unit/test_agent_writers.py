@@ -56,6 +56,28 @@ def test_blog_revision_skips_tools_and_includes_feedback(make_deps):
     assert out["blog"]["provenance"]["grounding"] == "model_knowledge_only"  # no research in state
 
 
+def test_user_refine_sends_the_whole_draft_and_open_suggestions(make_deps):
+    roles = default_roles()
+    captured = {}
+    original = roles["blog_writer"]
+
+    def writer(messages):
+        captured["prompt"] = messages[-1].content
+        return original
+
+    roles["blog_writer"] = writer
+    long_body = "# Old\n\n" + "A long paragraph about bakery email. " * 400 + "\n\n## FAQ\n\nQ?\n\n## Conclusion\n\nJoin us."
+    state = {"request": {"intent": "blog", "topic": "t", "target_keyword": "email marketing",
+                         "refine_target": "blog", "refine_instructions": "Make the intro warmer"},
+             "blog": {"title": "Old", "markdown": long_body},
+             "quality": {"blog": {"suggestions": ["Remove off-brand words: leverage."]}}}
+    make_blog_writer(make_deps(roles))(state)
+    prompt = captured["prompt"]
+    assert len(long_body) > 9000 and "## FAQ" in prompt and "## Conclusion" in prompt  # nothing cut off
+    assert "Make the intro warmer" in prompt and "Remove off-brand words: leverage." in prompt
+    assert "Return the WHOLE revised post" in prompt
+
+
 def test_blog_structured_failure_falls_back_to_text(make_deps):
     roles = default_roles()
     roles["blog_writer"] = "# Plain Title Here\n\nBody about email marketing."

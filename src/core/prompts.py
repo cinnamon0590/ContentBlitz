@@ -216,6 +216,11 @@ Analyze the sample marketing text and describe the brand voice: tone (3–5 adje
 core values, 1–3 signature phrases the brand repeats, and words the brand would avoid.
 archetype: the ONE persona that fits best — storyteller | conversational | data-driven | educator | contrarian."""
 
+BLOG_REVISION_KEEP = """
+Return the WHOLE revised post, not only the changed part. Unless the request says otherwise, keep what the
+quality score rewards: the H1 with the target keyword, the keyword in the first 100 words and in at least one
+H2, every ## section including the FAQ and the Conclusion with its call to action, and every [n] citation."""
+
 REVISION_NOTE = """
 
 REVISION REQUEST — improve the previous draft. Keep what works, fix these issues:

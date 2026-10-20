@@ -123,9 +123,24 @@ def finalize_request(request: ContentRequest, state: ContentState) -> ContentReq
     if request.intent == "campaign":
         allowed = [f for f in request.formats if f in ("blog", "linkedin", "image")]
         request.formats = list(dict.fromkeys(allowed)) or ["blog", "linkedin", "image"]
+    if request.refine_target == "blog" and (state.get("blog") or {}).get("target_keyword"):
+        # A refine keeps the post's keyword: re-deriving it moved the slug and scored the rewrite against a
+        # different phrase (live: "local bakery email marketing" became "email marketing for local", 90 → 78).
+        request.target_keyword = state["blog"]["target_keyword"]
     if not request.target_keyword and request.topic:
-        request.target_keyword = " ".join(request.topic.split()[:4])
+        request.target_keyword = default_keyword(request.topic)
     return request
+
+
+_KEYWORD_TAIL_WORDS = {"a", "an", "and", "for", "in", "of", "on", "or", "the", "to", "with", "about", "my", "our"}
+
+
+def default_keyword(topic: str, max_words: int = 5) -> str:
+    """The topic's first few words, never ending on a dangling "for"/"of"/"the" ("email marketing for local")."""
+    words = topic.split()[:max_words]
+    while len(words) > 1 and words[-1].lower() in _KEYWORD_TAIL_WORDS:
+        words.pop()
+    return " ".join(words)
 
 
 def make_query_handler(deps: AgentDeps):

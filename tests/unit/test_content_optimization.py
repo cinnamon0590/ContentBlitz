@@ -43,7 +43,8 @@ def test_meta_description_never_ends_mid_sentence():
     intro = ("In the bustling world of local bakeries, staying connected with your customers is key to thriving in "
              "2026. Local bakery email marketing is increasingly a cornerstone.")
     fitted = co.fit_meta_description(meta, fallback=intro)
-    assert fitted == meta  # no sentence fits, so the natural description is kept
+    assert fitted.startswith(meta) and 150 <= len(fitted) <= 160  # no intro sentence fits, so a short closer does
+    assert fitted.removeprefix(meta).strip() in co.META_CLOSERS
     long = ("Bakery email marketing made simple. Build your list, write emails people open, and measure results. "
             "Start this week with three easy steps. Then keep going every single week for steady growth.")
     trimmed = co.fit_meta_description(long)

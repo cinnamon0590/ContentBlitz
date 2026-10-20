@@ -131,3 +131,15 @@ def test_report_template_always_routes_to_report(make_deps):
     state = {"request": {"intent": "research", "template": "trend report"}, "user_input": "what should I post?"}
     assert node(state) == {"next_after_research": "report"}
     assert node({"request": {"intent": "research"}, "user_input": "x"}) == {"next_after_research": "blog"}
+
+
+def test_refine_keeps_the_posts_keyword_and_default_keywords_end_cleanly():
+    from src.agents.query_handler import default_keyword
+
+    state = {"blog": {"target_keyword": "local bakery email marketing", "markdown": "# x"}}
+    r = finalize_request(ContentRequest(intent="blog", refine_target="blog", topic="email marketing for local bakeries",
+                                        target_keyword="email marketing for local"), state)
+    assert r.target_keyword == "local bakery email marketing"
+    assert default_keyword("email marketing for local bakeries in Austin") == "email marketing for local bakeries"
+    assert default_keyword("ideas for the") == "ideas"
+    assert default_keyword("guide to the best croissants") == "guide to the best croissants"

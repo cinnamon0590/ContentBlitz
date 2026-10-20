@@ -127,6 +127,19 @@ def add_warning(state: ContentState, *warnings: str) -> list[str]:
     return [*state.get("warnings", []), *[w for w in warnings if w]]
 
 
+def refine_feedback(state: ContentState, kind: str, instructions: str) -> str:
+    """A user's refine request plus the quality gate's open suggestions for that draft.
+
+    Without the suggestions a refine pass fixes what was asked and can undo what the score rewarded
+    (a live "make the intro warmer" dropped a blog from 78 to 72), so the rewrite sees both.
+    """
+    suggestions = (state.get("quality") or {}).get(kind, {}).get("suggestions", [])[:6]
+    if not suggestions:
+        return instructions
+    return instructions + "\n\nWhile you do that, also fix these open quality issues:\n" + "\n".join(
+        f"- {s}" for s in suggestions)
+
+
 def advance_pending(state: ContentState, finished: str) -> list[str]:
     """Pop ``finished`` off the campaign queue (no-op when it isn't next)."""
     pending = list(state.get("pending_formats", []))

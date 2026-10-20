@@ -31,6 +31,7 @@ from src.agents import (
     brand_of,
     clear_scratch,
     format_sources,
+    refine_feedback,
     request_of,
     tool_loop_step,
     tool_results,
@@ -158,7 +159,8 @@ def compose_linkedin(deps: AgentDeps, state: ContentState, trend_payloads: list[
     if feedback and state.get("quality_target") == "linkedin" and previous:
         user += prompts.REVISION_NOTE.format(feedback=feedback, previous=previous.get("text", ""))
     elif request.refine_target == "linkedin" and previous:
-        user += prompts.REVISION_NOTE.format(feedback=request.refine_instructions or state.get("user_input", ""),
+        user += prompts.REVISION_NOTE.format(feedback=refine_feedback(state, "linkedin", request.refine_instructions
+                                                                      or state.get("user_input", "")),
                                              previous=previous.get("text", ""))
 
     warnings: list[str] = []

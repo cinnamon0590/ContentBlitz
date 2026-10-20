@@ -57,7 +57,7 @@ def make_content_strategist(deps: AgentDeps):
                                                                          research.trend_source_id))
         if feedback and state.get("quality_target") == "report":
             previous = (state.get("report") or {}).get("markdown", "")
-            user += prompts.REVISION_NOTE.format(feedback=feedback, previous=previous[:6000])
+            user += prompts.REVISION_NOTE.format(feedback=feedback, previous=previous[:24000])
 
         warnings = []
         try:

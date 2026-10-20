@@ -185,11 +185,20 @@ def check_title(title: str, keyword: str = "") -> list[str]:
     return issues
 
 
+# Complete closing sentences, shortest first, used to lift a short meta description into 150–160 characters.
+META_CLOSERS = sorted([
+    "Learn more.", "Read on.", "See how.", "Start today.", "Get the guide.", "Try it this week.",
+    "Read the full guide.", "See the simple steps.", "Get practical tips inside.", "See real examples inside.",
+    "Learn the steps that work.", "Read the practical, step-by-step guide.",
+], key=len)
+
+
 def fit_meta_description(meta: str, fallback: str = "") -> str:
     """Fit a meta description to 150–160 characters without leaving a fragment.
 
     Too short: append whole sentences from ``fallback`` that fit (a shorter, natural description beats one that
-    ends mid-sentence, such as "...start today! In the bustling world…"). Too long: cut at the last sentence end
+    ends mid-sentence, such as "...start today! In the bustling world…"), then, if it is still short, one of the
+    short ``META_CLOSERS`` calls to action that lands it inside the range. Too long: cut at the last sentence end
     from 120 characters on (a complete 137-character description beats a 155-character fragment), otherwise at a
     word boundary with an ellipsis.
     """
@@ -202,6 +211,10 @@ def fit_meta_description(meta: str, fallback: str = "") -> str:
                 meta = candidate
                 if len(meta) >= lo:
                     break
+    if len(meta) < lo:  # still short: close the gap with one short, complete call to action
+        gap = [c for c in META_CLOSERS if lo <= len(meta) + 1 + len(c) <= hi]
+        if gap:
+            meta = f"{meta} {gap[0]}"
     if len(meta) > hi:
         window = meta[:hi]
         end = max(window.rfind(". "), window.rfind("! "), window.rfind("? "), -1)
@@ -239,6 +252,22 @@ def uncited_statistics(markdown: str) -> list[str]:
 
 def has_faq_section(markdown: str) -> bool:
     return bool(re.search(r"^#{2,3}\s*(FAQ|Frequently Asked Questions)", markdown, re.M | re.I))
+
+
+def keep_faq_section(previous: str, revised: str) -> tuple[str, bool]:
+    """Put the previous draft's FAQ back if a revision dropped it (before the Conclusion when there is one).
+
+    Returns the markdown and whether the FAQ was restored. A live "make the intro warmer" refine dropped the
+    FAQ even when told to keep it, which costs the structure score and 'People also ask' visibility.
+    """
+    if has_faq_section(revised) or not has_faq_section(previous):
+        return revised, False
+    faq = re.search(r"^#{2,3}\s*(?:FAQ|Frequently Asked Questions).*?(?=^##\s|\Z)", previous, re.M | re.I | re.S)
+    section = faq.group(0).strip()
+    head, sep, tail = revised.partition("\n## Conclusion")
+    if sep:
+        return f"{head.rstrip()}\n\n{section}\n{sep}{tail}", True
+    return f"{revised.rstrip()}\n\n{section}\n", True
 
 
 def has_cta(text: str, cta_hint: str = "") -> bool:

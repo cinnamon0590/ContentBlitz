@@ -34,6 +34,7 @@ from src.agents import (
     brand_of,
     clear_scratch,
     format_sources,
+    refine_feedback,
     request_of,
     scrub_body,
     tool_loop_step,
@@ -139,13 +140,13 @@ def compose_blog(deps: AgentDeps, state: ContentState, keyword_payloads: list[di
             f"STATISTICS:\n{stats}\n\nSOURCES:\n{format_sources(sources)}")
 
     previous = state.get("blog") or {}
+    previous_md = _strip_existing_provenance(previous.get("markdown", ""))[:24000]  # whole post, FAQ included
     feedback = state.get("revision_feedback", "")
     if feedback and state.get("quality_target") == "blog" and previous:
-        user += prompts.REVISION_NOTE.format(feedback=feedback,
-                                             previous=_strip_existing_provenance(previous.get("markdown", ""))[:9000])
+        user += prompts.REVISION_NOTE.format(feedback=feedback, previous=previous_md) + prompts.BLOG_REVISION_KEEP
     elif request.refine_target == "blog" and previous:
-        user += prompts.REVISION_NOTE.format(feedback=request.refine_instructions or state.get("user_input", ""),
-                                             previous=_strip_existing_provenance(previous.get("markdown", ""))[:9000])
+        instructions = refine_feedback(state, "blog", request.refine_instructions or state.get("user_input", ""))
+        user += prompts.REVISION_NOTE.format(feedback=instructions, previous=previous_md) + prompts.BLOG_REVISION_KEEP
 
     warnings: list[str] = []
     draft = deps.llm.structured(BlogDraft, system, user, tier="smart")
@@ -169,6 +170,10 @@ def compose_blog(deps: AgentDeps, state: ContentState, keyword_payloads: list[di
                               f"{co.word_count(expanded)} words in plainer language.")
 
     markdown, notes = scrub_body(draft.markdown, registry, valid_ids, brand.location)
+    if previous_md and (feedback or request.refine_target == "blog"):
+        markdown, restored = co.keep_faq_section(previous_md, markdown)
+        if restored:
+            notes.append("The revision dropped the FAQ section, so the previous FAQ was kept.")
     if expansion_note:
         notes.append(expansion_note)
     markdown = re.sub(r"^#\s+.+\n+", "", markdown.lstrip(), count=1) if markdown.lstrip().startswith("# ") else markdown

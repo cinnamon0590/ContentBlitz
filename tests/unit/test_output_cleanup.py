@@ -47,3 +47,30 @@ def test_every_image_prompt_forbids_text(make_deps):
     out = make_image_generator(deps)({"request": {"intent": "image", "topic": "bakery", "image_prompt": "storefront"}})
     assert deps.images.client.prompts[-1].endswith(NO_TEXT_SUFFIX)
     assert not out["image"]["enhanced_prompt"].endswith(NO_TEXT_SUFFIX)  # the shown prompt stays readable
+
+
+def test_meta_closer_only_when_it_lands_in_range():
+    assert co.fit_meta_description("x" * 100) == "x" * 100  # too far short for any closer: left as written
+    lifted = co.fit_meta_description("Email marketing for local bakeries: build a list, send weekly specials and "
+                                     "track what brings people through the door.")
+    assert 150 <= len(lifted) <= 160 and lifted.endswith(".")
+
+
+def test_refine_feedback_carries_open_quality_suggestions():
+    from src.agents import refine_feedback
+
+    state = {"quality": {"blog": {"suggestions": ["Remove off-brand words: leverage.", "Shorten sentences."]}}}
+    feedback = refine_feedback(state, "blog", "Make the intro warmer")
+    assert feedback.startswith("Make the intro warmer") and "- Remove off-brand words: leverage." in feedback
+    assert refine_feedback({}, "blog", "Make the intro warmer") == "Make the intro warmer"
+
+
+def test_revision_that_drops_the_faq_gets_it_back():
+    previous = "# T\n\nIntro.\n\n## Why\n\nBody.\n\n## FAQ\n\n### Q1?\n\nA1.\n\n## Conclusion\n\nJoin us."
+    revised = "# T\n\nWarmer intro.\n\n## Why\n\nBody.\n\n## Conclusion\n\nJoin us today."
+    fixed, restored = co.keep_faq_section(previous, revised)
+    assert restored and fixed.index("## FAQ") < fixed.index("## Conclusion") and "### Q1?" in fixed
+    assert "Warmer intro." in fixed and "Join us today." in fixed
+    assert co.keep_faq_section(previous, previous) == (previous, False)  # FAQ still there: unchanged
+    no_conclusion, _ = co.keep_faq_section(previous, "# T\n\nOnly intro.")
+    assert no_conclusion.rstrip().endswith("A1.")
