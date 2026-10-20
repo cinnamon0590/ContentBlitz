@@ -58,16 +58,20 @@ def render_settings_panel() -> None:
                 }).model_dump()
                 st.toast("Brand profile saved")
 
-        with st.expander("✨ Learn my brand voice from sample content"):
+        learned_note = st.session_state.pop("voice_learned", "")  # shown after the rerun that applies it
+        with st.expander("✨ Learn my brand voice from sample content", expanded=bool(learned_note)):
+            if learned_note:
+                st.success(learned_note)
             sample = st.text_area("Paste 2–3 paragraphs of your existing content (website, newsletter, posts)",
                                   height=160)
             if st.button("Analyze voice") and sample.strip():
                 with st.spinner("Analyzing your writing…"):
                     learned = app.learn_brand_voice(sample, current)
                 st.session_state.brand = learned.model_dump()
-                st.success(f"Learned tone: **{learned.tone}** · audience: **{learned.audience}** · persona: "
-                           f"**{learned.voice_archetype or 'none'}** · ~{learned.avg_sentence_words:.0f} words per "
-                           f"sentence · emojis: **{learned.emoji_level}**")
+                st.session_state.voice_learned = (
+                    f"Learned tone: **{learned.tone}** · audience: **{learned.audience}** · persona: "
+                    f"**{learned.voice_archetype or 'none'}** · ~{learned.avg_sentence_words:.0f} words per "
+                    f"sentence · emojis: **{learned.emoji_level}**. The fields above now use it.")
                 st.rerun()
         if st.button("Reset brand profile"):
             st.session_state.brand = BrandProfile().model_dump()

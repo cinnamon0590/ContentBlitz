@@ -58,6 +58,16 @@ def test_example_button_and_settings_save(ui):
     assert at.session_state["brand"]["name"] == "Bean There Café"
 
 
+def test_learn_brand_voice_confirms_after_the_rerun(ui):
+    at = ui(default_roles("general")).run()
+    sample = next(t for t in at.text_area if t.label.startswith("Paste 2–3 paragraphs"))
+    sample.set_value("We bake with love every morning. Come say hi.")
+    next(b for b in at.button if b.label == "Analyze voice").click().run()
+    assert not at.exception
+    assert at.session_state["brand"]["tone"] == "warm"
+    assert any("Learned tone: **warm**" in s.value for s in at.success)  # still visible after st.rerun()
+
+
 def test_dashboard_editor_follows_stored_content(ui):
     """A hook swap updates the stored post and the editor.
 
