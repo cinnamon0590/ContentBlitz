@@ -63,6 +63,7 @@ Rules:
 - formats: for campaign, list the formats in order, chosen from blog, linkedin, image.
 - template: optional — blog: how-to | listicle | comparison | thought leadership;
   linkedin: insights | story | tips | announcement; report: trend report | market analysis | competitive analysis.
+- funnel_stage: only if the user names one (awareness | consideration | decision); otherwise leave it empty.
 - image_prompt: for image requests, the user's visual description.
 
 Examples:

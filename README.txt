@@ -47,12 +47,14 @@ API goes down.
 | **Brand voice** | One brand profile across all formats, rule-based checks, and **learn-from-sample**: writing persona (storyteller, conversational, data-driven, educator, contrarian), emoji level and sentence length are measured and enforced |
 | **Trend radar** | "What should I post about?" → rising Google Trends searches for your niche with their growth, cited like any source, with one-click LinkedIn / blog drafts in the 🔎 Research tab |
 | **Templates** | Blog: how-to/listicle/comparison/thought leadership · LinkedIn: insights/story/tips/announcement · Reports: trend/market/competitive |
+| **Funnel stages** | Every blog and LinkedIn post targets a buyer's-journey stage (awareness, consideration or decision, after HubSpot's content-marketing guide), and its angle and call to action follow it: "subscribe for more tips" for awareness, "order today" for a pre-order special |
+| **Domain guidance** | The writer prompts follow the course's three references: the Moz SEO Beginner's Guide (on-page SEO), Google's helpful-content and E-E-A-T guidelines (people-first content, citations, author byline, AI disclosure) and HubSpot's content-marketing guide (personas, funnel-stage CTAs, brand voice consistency) |
 | **Workflows** | Multi-turn refinement ("make it shorter"), research-first, and **campaign / content series** (blog + LinkedIn + image in one request) |
 | **Memory** | LangGraph checkpointer (in-memory or SQLite) per conversation `thread_id` |
 | **Guardrails** | Prompt-injection and policy screens, PII redaction, moderation, citation integrity, tool and revision caps, per-request budget |
 | **UI** | Streamlit with tabs: Chat · Content Dashboard (edit/score/refine) · Research panel · Image gallery · Export · Settings. **Accessible and mobile-ready**: 0 axe-core violations (WCAG 2.2 AA) on every tab at desktop and 390 px phone width, real image alt text, AA-contrast theme (`.streamlit/config.toml`), no horizontal scrolling on phones |
 | **Export** | Markdown, HTML, WordPress blocks, TXT, PDF, PNG/JPG, ZIP bundle |
-| **Quality of engineering** | 227 offline tests (~98% coverage), live-API tests for all three LLM providers, GitHub Actions CI (lint + tests on Python 3.11–3.14, 90% coverage gate, Docker image built and tested), Docker, dev/prod configs, JSON logs, cost tracking |
+| **Quality of engineering** | 237 offline tests (~98% coverage), live-API tests for all three LLM providers, GitHub Actions CI (lint + tests on Python 3.11–3.14, 90% coverage gate, Docker image built and tested), Docker, dev/prod configs, JSON logs, cost tracking |
 
 ---
 
@@ -226,7 +228,7 @@ Each agent factory (`make_query_handler`, `make_research_agent`, `make_blog_writ
 ## 8. Testing
 
 ```bash
-pytest                         # 227 offline tests (unit + integration + e2e UI + notebook); no keys needed
+pytest                         # 237 offline tests (unit + integration + e2e UI + notebook); no keys needed
 pytest --cov=src               # coverage report (~98%; web_app UI code is excluded and smoke-tested instead)
 pytest tests/unit/test_agent_research.py      # test one agent on its own
 pytest -m live                 # real API calls (needs .env keys; costs a few cents); includes one full

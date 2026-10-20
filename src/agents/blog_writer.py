@@ -43,7 +43,7 @@ from src.agents import (
     wants_tools,
 )
 from src.core import prompts
-from src.core.templates import outline, suggest_template
+from src.core.templates import funnel_note, outline, suggest_funnel_stage, suggest_template
 from src.utils import content_optimization as co
 from src.workflow.state_management import BlogPost, ContentState, Provenance, ResearchReport, SourceRegistry
 
@@ -129,6 +129,9 @@ def compose_blog(deps: AgentDeps, state: ContentState, keyword_payloads: list[di
     valid_ids = {s.id for s in sources}
     keyword = request.target_keyword or research.topic
     template = suggest_template("blog", state.get("user_input", ""), request.template)
+    revising = bool(state.get("revision_feedback")) or request.refine_target == "blog"
+    kept_stage = (state.get("blog") or {}).get("funnel_stage", "") if revising else ""
+    stage = suggest_funnel_stage(state.get("user_input", ""), template, request.funnel_stage or kept_stage)
     keyword_text, related = _keyword_context(keyword_payloads, research)
 
     system = prompts.with_brand(prompts.BLOG_WRITER, brand, outline=outline("blog", template))
@@ -136,7 +139,7 @@ def compose_blog(deps: AgentDeps, state: ContentState, keyword_payloads: list[di
     stats = "\n".join(f"- {s}" for s in research.statistics)
     user = (f"TOPIC: {request.topic or research.topic}\nTARGET KEYWORD: {keyword}\nAUDIENCE: "
             f"{request.audience or brand.audience}\nTONE: {request.tone or brand.tone}\nTEMPLATE: {template}\n"
-            f"{keyword_text}\n\nRESEARCH SUMMARY: {research.summary}\nKEY FINDINGS:\n{findings}\n"
+            f"{funnel_note(stage)}\n{keyword_text}\n\nRESEARCH SUMMARY: {research.summary}\nKEY FINDINGS:\n{findings}\n"
             f"STATISTICS:\n{stats}\n\nSOURCES:\n{format_sources(sources)}")
 
     previous = state.get("blog") or {}
@@ -203,6 +206,7 @@ def compose_blog(deps: AgentDeps, state: ContentState, keyword_payloads: list[di
         markdown=f"{body}\n\n{provenance.to_markdown()}",
         internal_link_suggestions=draft.internal_link_suggestions or co.suggest_internal_links(body),
         template=template,
+        funnel_stage=stage,
         provenance=provenance,
     )
     return {

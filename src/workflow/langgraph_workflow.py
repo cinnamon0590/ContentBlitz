@@ -143,6 +143,7 @@ def render_response(state: ContentState) -> str:
         b = state["blog"]
         parts.append(f"## 📝 SEO Blog Post\n**Title:** {b['title']}  \n**Meta description:** {b['meta_description']}"
                      f"  \n**URL slug:** /blog/{b['slug']}  \n**Target keyword:** {b['target_keyword']}  \n"
+                     f"**Funnel stage:** {b.get('funnel_stage', 'awareness')}  \n"
                      f"{_quality_line(state, 'blog')}\n\n---\n\n{b['markdown']}")
     if "linkedin" in outputs and state.get("linkedin"):
         li = state["linkedin"]
@@ -152,7 +153,7 @@ def render_response(state: ContentState) -> str:
             comment += ("\n\n**Alternative hooks** (swap one in from the Content Dashboard):\n\n"
                         + "\n".join(f"- _{o['style']}_ ({o['score']:.0f}/100): {o['text']}" for o in alternatives))
         parts.append(f"## 💼 LinkedIn Post ({len(li['text'])} characters, {len(li['hashtags'])} hashtags)\n"
-                     f"{_quality_line(state, 'linkedin')}\n\n{li['text']}{comment}\n\n"
+                     f"**Funnel stage:** {li.get('funnel_stage', 'awareness')}  \n{_quality_line(state, 'linkedin')}\n\n{li['text']}{comment}\n\n"
                      f"_{li['provenance'].get('grounding', '').replace('_', ' ')}_")
     if "image" in outputs and state.get("image"):
         img = state["image"]

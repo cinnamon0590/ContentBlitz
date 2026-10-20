@@ -39,7 +39,7 @@ from src.agents import (
     wants_tools,
 )
 from src.core import prompts
-from src.core.templates import outline, suggest_template
+from src.core.templates import funnel_note, outline, suggest_funnel_stage, suggest_template
 from src.utils import content_optimization as co
 from src.utils.guardrails import strip_links
 from src.utils.quality_validation import score_hook
@@ -142,6 +142,10 @@ def compose_linkedin(deps: AgentDeps, state: ContentState, trend_payloads: list[
     registry = SourceRegistry(state.get("sources"))
     sources = research.provenance.sources
     template = suggest_template("linkedin", state.get("user_input", ""), request.template)
+    revising = bool(state.get("revision_feedback")) or request.refine_target == "linkedin"
+    kept_stage = ((state.get("linkedin") or {}).get("funnel_stage", "") if revising
+                  else (state.get("blog") or {}).get("funnel_stage", "") if request.intent == "campaign" else "")
+    stage = suggest_funnel_stage(state.get("user_input", ""), template, request.funnel_stage or kept_stage)
     angles = [a for p in trend_payloads for a in p.get("angles", [])]
     candidates = list(dict.fromkeys(c for p in trend_payloads for c in p.get("hashtag_candidates", [])))
 
@@ -149,7 +153,8 @@ def compose_linkedin(deps: AgentDeps, state: ContentState, trend_payloads: list[
     system = prompts.with_brand(prompts.LINKEDIN_WRITER, brand, outline=outline("linkedin", template),
                                 hook_styles=hook_styles)
     findings = "\n".join(f"- {f.claim} {f.source_ids}" for f in research.key_findings[:6])
-    user = (f"TOPIC: {request.topic or research.topic}\nTEMPLATE: {template}\nAUDIENCE: {request.audience or brand.audience}"
+    user = (f"TOPIC: {request.topic or research.topic}\nTEMPLATE: {template}\n{funnel_note(stage)}\n"
+            f"AUDIENCE: {request.audience or brand.audience}"
             f"\nTRENDING ANGLES: {' | '.join(angles[:5]) or 'n/a'}\nHASHTAG IDEAS: {' '.join(candidates) or 'n/a'}\n\n"
             f"RESEARCH SUMMARY: {research.summary}\nKEY FINDINGS:\n{findings}\n\nSOURCES:\n{format_sources(sources)}")
     if blog := state.get("blog"):
@@ -212,7 +217,7 @@ def compose_linkedin(deps: AgentDeps, state: ContentState, trend_payloads: list[
     )
     post = LinkedInPost(text=text, hook=hook, hook_options=options, hashtags=tags,
                         first_comment=build_first_comment(post_sources),
-                        template=template, provenance=provenance)
+                        template=template, funnel_stage=stage, provenance=provenance)
     return {
         "linkedin": post.model_dump(),
         "sources": registry.dump(),

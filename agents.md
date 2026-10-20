@@ -22,7 +22,7 @@ contributors and AI coding agents. For setup, see `README.md` / `README.txt`. Fo
 | Images | gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → Pillow branded placeholder |
 | Memory | `InMemorySaver` (dev) / `SqliteSaver` (prod) keyed by `thread_id` |
 | UI | Streamlit: Chat · Content Dashboard · Research · Images · Export · Settings |
-| Tests | 227 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live`; GitHub Actions CI on every push (Python 3.11–3.14 + Docker image build) |
+| Tests | 237 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live`; GitHub Actions CI on every push (Python 3.11–3.14 + Docker image build) |
 
 ### Repository map
 
@@ -201,8 +201,9 @@ node({"user_input": "Write an SEO blog about email marketing for bakeries"})
 | **Purpose** | Long-form SEO content: one H1, H2/H3 structure, 1–2% keyword density, 150–160 character meta description, slug, FAQ, CTA, internal-link ideas |
 | **Nodes** | `blog_writer` ⇄ `blog_tools` (`keyword_research(seed)`: SerpAPI related searches + People-also-ask) |
 | **Reads / writes** | Reads `research`, `brand`, `request`, `sources`, and the previous `blog` when revising. Writes `blog` (`BlogPost`), `quality_target="blog"` |
-| **LLM** | `smart` tier, structured `BlogDraft` (prompt `BLOG_WRITER`: Moz on-page SEO, Google helpful-content/E-E-A-T, brand block, grounding rules) |
+| **LLM** | `smart` tier, structured `BlogDraft` (prompt `BLOG_WRITER`: Moz on-page SEO, Google helpful-content/E-E-A-T, HubSpot content marketing, brand block, grounding rules) |
 | **Templates** | how-to · listicle · comparison · thought leadership (`src/core/templates.py`; the user can name one, otherwise it's auto-suggested) |
+| **Funnel stage** | awareness · consideration · decision, after HubSpot's buyer's-journey guidance (`suggest_funnel_stage`: "how to / what is" → awareness, "best / vs / compare" → consideration, "pricing / order / pre-order / launch" → decision, else the template's stage). The writer gets `funnel_note(stage)`, which sets the angle and adapts the brand's call to action (subscribe → see an example → order now). Stored on the post and shown with it; a refine keeps it |
 | **Long-form expansion** | gpt-4o writes about 700 words per reply however much it is asked for, so a draft under 1,200 words is grown **one `##` section at a time** (`expand_short_draft`, prompt `BLOG_EXPANDER`): body sections get parallel requests for ~250 more words in plain language, keeping headings and `[n]` citations; the FAQ and conclusion are left alone. A section is replaced only if its heading is kept and it got longer. Measured live: 657 → 1,304 and 666 → 1,360 words, scores 81 and 91 |
 | **Deterministic post-processing** | `fit_meta_description`. `slugify(keyword)`. Exactly one H1 with an author/reviewer byline (E-E-A-T). Extra H1s demoted. `scrub_body` drops any model-written Sources section, invented URLs and invalid `[n]`. Internal-link fallback from H2s. Provenance appended |
 | **Revision mode** | Uses quality-gate feedback or user refine instructions. Skips the keyword tools and includes the whole previous draft. A user refine also gets the draft's open quality suggestions and keeps the post's target keyword (`finalize_request`); `BLOG_REVISION_KEEP` asks the model to keep the H1, keyword placement, FAQ, conclusion and citations, and `keep_faq_section` restores the FAQ if a rewrite drops it. One author byline only |
@@ -218,6 +219,7 @@ node({"user_input": "Write an SEO blog about email marketing for bakeries"})
 | **Reads / writes** | Reads `research`, `brand`, `blog` (for voice consistency in campaigns). Writes `linkedin` (`LinkedInPost`), `quality_target="linkedin"` |
 | **LLM** | `smart` tier, structured `LinkedInDraft` (prompt `LINKEDIN_WRITER`) |
 | **Templates** | insights · story · tips · announcement |
+| **Funnel stage** | Same stages and rules as the blog; in a campaign the post follows the blog's stage |
 | **Hook variants** | The model returns 4 alternative hooks (story · hot take · how-to hack · data point). `rank_hooks` scores each with the quality gate's `score_hook` rules (length, clichés, stock openers, exclamation marks, and **grounding**: a number or "doubled/tripled" result that isn't in the research costs 30 points, so an invented success story never leads the post); the best leads the post (ties keep the drafted hook) and all are stored in `hook_options`. `swap_hook` / `ContentBlitz.apply_hook` swap one in from the Dashboard and re-score |
 | **Deterministic formatting** | `strip_links` (links move to the first comment). Remove `[n]`. `format_linkedin`: normalize/dedupe CamelCase hashtags, cap at 12, top up from trend candidates, split long paragraphs, trim to 1600 characters at a sentence boundary |
 | **Attribution** | `first_comment` = "📚 Sources for this post:" plus the top research sources with URLs |

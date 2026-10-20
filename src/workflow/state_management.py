@@ -146,6 +146,7 @@ class ContentRequest(BaseModel):
     audience: str = ""
     tone: str = ""
     template: str = ""
+    funnel_stage: str = ""  # awareness | consideration | decision ("" = infer from the request)
     formats: list[str] = Field(default_factory=list)  # campaign: e.g. ["blog","linkedin","image"]
     needs_research: bool = True
     image_prompt: str = ""
@@ -195,6 +196,7 @@ class BlogPost(BaseModel):
     markdown: str = ""
     internal_link_suggestions: list[str] = Field(default_factory=list)
     template: str = "how-to"
+    funnel_stage: str = "awareness"
     provenance: Provenance = Field(default_factory=Provenance)
 
 
@@ -212,6 +214,7 @@ class LinkedInPost(BaseModel):
     hashtags: list[str] = Field(default_factory=list)
     first_comment: str = ""
     template: str = "insights"
+    funnel_stage: str = "awareness"
     provenance: Provenance = Field(default_factory=Provenance)
 
 
