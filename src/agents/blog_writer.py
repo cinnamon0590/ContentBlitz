@@ -180,6 +180,7 @@ def compose_blog(deps: AgentDeps, state: ContentState, keyword_payloads: list[di
     markdown = re.sub(r"^#\s+", "## ", markdown, flags=re.M)  # demote any extra H1s
     title = draft.title.strip().strip("#").strip()
     byline = f"*By the {brand.name} team · Fact-check and add your expert reviewer before publishing.*"
+    markdown = re.sub(r"^\*By the .+? team · Fact-check.*\*[ \t]*\n*", "", markdown, flags=re.M)  # a revision's old byline
     body = f"# {title}\n\n{byline}\n\n{markdown.strip()}"
 
     first_para = next((p for p in co.strip_markdown(markdown).split("\n") if len(p) > 60), "")

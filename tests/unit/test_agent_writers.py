@@ -78,6 +78,19 @@ def test_user_refine_sends_the_whole_draft_and_open_suggestions(make_deps):
     assert "Return the WHOLE revised post" in prompt
 
 
+
+def test_revision_keeps_a_single_byline(make_deps):
+    roles = default_roles()
+    reply = dict(roles["blog_writer"])
+    reply["markdown"] = ("# Title\n\n*By the Crumb team · Fact-check and add your expert reviewer before publishing.*\n\n"
+                         + reply["markdown"].split("\n", 1)[1])
+    roles["blog_writer"] = reply
+    state = {"request": {"intent": "blog", "topic": "t", "target_keyword": "email marketing", "refine_target": "blog"},
+             "blog": {"title": "Old", "markdown": "# Old\n\nold"}}
+    blog = make_blog_writer(make_deps(roles))(state)["blog"]
+    assert blog["markdown"].count("Fact-check and add your expert reviewer") == 1
+
+
 def test_blog_structured_failure_falls_back_to_text(make_deps):
     roles = default_roles()
     roles["blog_writer"] = "# Plain Title Here\n\nBody about email marketing."
