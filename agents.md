@@ -22,7 +22,7 @@ contributors and AI coding agents. For setup, see `README.md` / `README.txt`. Fo
 | Images | gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → Pillow branded placeholder |
 | Memory | `InMemorySaver` (dev) / `SqliteSaver` (prod) keyed by `thread_id` |
 | UI | Streamlit: Chat · Content Dashboard · Research · Images · Export · Settings |
-| Tests | 206 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live`; GitHub Actions CI on every push (Python 3.11–3.14 + Docker image build) |
+| Tests | 220 offline tests (unit / integration / e2e UI + notebook) at ~98% coverage, plus `pytest -m live`; GitHub Actions CI on every push (Python 3.11–3.14 + Docker image build) |
 
 ### Repository map
 
@@ -218,7 +218,7 @@ node({"user_input": "Write an SEO blog about email marketing for bakeries"})
 | **Reads / writes** | Reads `research`, `brand`, `blog` (for voice consistency in campaigns). Writes `linkedin` (`LinkedInPost`), `quality_target="linkedin"` |
 | **LLM** | `smart` tier, structured `LinkedInDraft` (prompt `LINKEDIN_WRITER`) |
 | **Templates** | insights · story · tips · announcement |
-| **Hook variants** | The model returns 4 alternative hooks (story · hot take · how-to hack · data point). `rank_hooks` scores each with the quality gate's `score_hook` rules (length, clichés, stock openers, exclamation marks); the best leads the post (ties keep the drafted hook) and all are stored in `hook_options`. `swap_hook` / `ContentBlitz.apply_hook` swap one in from the Dashboard and re-score |
+| **Hook variants** | The model returns 4 alternative hooks (story · hot take · how-to hack · data point). `rank_hooks` scores each with the quality gate's `score_hook` rules (length, clichés, stock openers, exclamation marks, and **grounding**: a number or "doubled/tripled" result that isn't in the research costs 30 points, so an invented success story never leads the post); the best leads the post (ties keep the drafted hook) and all are stored in `hook_options`. `swap_hook` / `ContentBlitz.apply_hook` swap one in from the Dashboard and re-score |
 | **Deterministic formatting** | `strip_links` (links move to the first comment). Remove `[n]`. `format_linkedin`: normalize/dedupe CamelCase hashtags, cap at 12, top up from trend candidates, split long paragraphs, trim to 1600 characters at a sentence boundary |
 | **Attribution** | `first_comment` = "📚 Sources for this post:" plus the top research sources with URLs |
 | **Test in isolation** | `pytest tests/unit/test_agent_writers.py -k linkedin` |
@@ -228,7 +228,7 @@ node({"user_input": "Write an SEO blog about email marketing for bakeries"})
 | | |
 |---|---|
 | **Purpose** | Marketing visuals with prompt optimization |
-| **Pipeline** | (1) Art-director **prompt enhancement**: subject, composition with negative space, lighting, lens, mood, brand palette and visual style, no text or logos, plus accessible alt text (`fast` model, `IMAGE_PROMPT`). (2) **Moderation** of the enhanced prompt. (3) **Fallback chain** gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → Pillow branded placeholder. (4) **Pillow validation** (decodable, minimum 256 px), normalized to PNG. (5) Saved to `outputs/images/<timestamp>-<slug>.png` with a `.json` metadata file |
+| **Pipeline** | (1) Art-director **prompt enhancement**: subject, composition with negative space, lighting, lens, mood, brand palette and visual style, no text or logos, plus accessible alt text (`fast` model, `IMAGE_PROMPT`). A fixed `NO_TEXT_SUFFIX` is appended to every prompt sent to a provider, because image models letter signs and packaging unless told plainly not to. (2) **Moderation** of the enhanced prompt. (3) **Fallback chain** gpt-image-1 → gpt-image-1-mini → Gemini 2.5 Flash Image → Pillow branded placeholder. (4) **Pillow validation** (decodable, minimum 256 px), normalized to PNG. (5) Saved to `outputs/images/<timestamp>-<slug>.png` with a `.json` metadata file |
 | **Reads / writes** | Reads `request.image_prompt`, `brand`, `blog`/`linkedin` (campaign context). Writes `image`, `images` (gallery), `pending_formats` |
 | **Fallbacks** | If enhancement fails, a deterministic template prompt is used. Each provider failure is recorded in `attempts` and in provenance notes. The placeholder never fails |
 | **Note** | gpt-image-1 needs a verified OpenAI organization. Without one, gpt-image-1-mini becomes the default automatically. DALL-E 2/3 are retired by OpenAI. Quality is pinned to `medium` (the API default `high` costs ~4×) |
@@ -284,7 +284,8 @@ records a warning and moves on. Users can also edit content in the **Content Das
 | Execution | Max tool iterations per loop (6) · deep_research ≤ 1 · revisions ≤ 2 · LangGraph `recursion_limit` (40) | config `guardrails` |
 | Execution | Per-request cost budget (USD) stops revisions and remaining campaign formats | `CostTracker.over_budget` |
 | Execution | Timeouts + exponential-backoff retries (tenacity) + provider fallbacks | `integrations/__init__.py` |
-| Output | Citation integrity: only registry URLs survive; invalid `[n]` removed | `enforce_citation_integrity`, `scrub_body` |
+| Output | Citation integrity: only registry URLs survive; merged citations (`[7, 8]`, `[2-4]`) are split and each id checked; invalid `[n]` removed | `enforce_citation_integrity`, `normalize_citations`, `scrub_body` |
+| Output | No template leftovers: `[Your City]`-style placeholders become the brand location, or "your area" when none is set | `fill_location_placeholders` |
 | Output | LinkedIn: no links in body; hashtag/length limits enforced in code | `strip_links`, `format_linkedin` |
 | Output | Moderation of generated text and image prompts; unsafe artifacts are withheld | `finalize`, image agent |
 | Output | Grounding labels and AI-assisted-content disclosure in every export | `Provenance` |

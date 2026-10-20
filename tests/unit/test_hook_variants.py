@@ -40,16 +40,35 @@ def test_rank_hooks_cleans_dedupes_and_sorts():
 def test_writer_leads_with_best_hook_and_keeps_alternatives(make_deps):
     roles = default_roles()
     roles["linkedin_writer"] = writer_reply("In today's world, replies matter.", [
-        {"style": "story", "text": "Last spring a customer waited 3 days for our reply."},
+        {"style": "story", "text": "Last spring a customer waited for our reply."},
         {"style": "hot take", "text": "Slow replies cost you more than ads do."},
     ])
     out = make_linkedin_writer(make_deps(roles))(STATE)
     post = LinkedInPost.model_validate(out["linkedin"])
-    assert post.text.startswith("Last spring a customer waited 3 days for our reply.\n\n")
-    assert post.hook == "Last spring a customer waited 3 days for our reply."
+    assert post.text.startswith("Last spring a customer waited for our reply.\n\n")
+    assert post.hook == "Last spring a customer waited for our reply."
     assert [o.style for o in post.hook_options] == ["story", "hot take", "drafted"]
     assert any("Led with the 'story' hook" in n for n in post.provenance.notes)
     assert linkedin_metrics(post.text)["hook"] == post.hook
+
+
+def test_invented_result_in_a_hook_never_leads(make_deps):
+    roles = default_roles()
+    roles["linkedin_writer"] = writer_reply("Most small shops lose leads to slow replies.", [
+        {"style": "story", "text": "A bakery owner tripled her sales with 3 quick replies a day."},
+    ])
+    post = LinkedInPost.model_validate(make_linkedin_writer(make_deps(roles))(STATE)["linkedin"])
+    story = next(o for o in post.hook_options if o.style == "story")
+    assert post.hook == "Most small shops lose leads to slow replies."
+    assert story.score == 70 and "tripled" in story.issues[0] and "3" in story.issues[0]
+
+
+def test_unsupported_claims_ignore_years_and_accept_sourced_numbers():
+    research = "Email reaches 4.73 billion users; replies within 5 minutes doubled conversions in 2025."
+    assert score_hook("Email will reach 4.73 billion users by 2026.", research) == (100.0, [])
+    assert score_hook("Fast replies doubled conversions.", research)[0] == 100
+    assert score_hook("Fast replies quadrupled conversions.", research)[0] == 70
+    assert score_hook("Fast replies quadrupled conversions.")[0] == 100  # no research given: not checked
 
 
 def test_writer_keeps_drafted_hook_on_a_tie(make_deps):

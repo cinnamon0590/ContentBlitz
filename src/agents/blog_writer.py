@@ -168,7 +168,7 @@ def compose_blog(deps: AgentDeps, state: ContentState, keyword_payloads: list[di
             expansion_note = (f"The first draft came back at {drafted_words} words; an editing pass expanded it to "
                               f"{co.word_count(expanded)} words in plainer language.")
 
-    markdown, notes = scrub_body(draft.markdown, registry, valid_ids)
+    markdown, notes = scrub_body(draft.markdown, registry, valid_ids, brand.location)
     if expansion_note:
         notes.append(expansion_note)
     markdown = re.sub(r"^#\s+.+\n+", "", markdown.lstrip(), count=1) if markdown.lstrip().startswith("# ") else markdown

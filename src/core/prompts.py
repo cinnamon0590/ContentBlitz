@@ -147,7 +147,8 @@ Requirements:
   * match the search intent's format (Moz "featured snippet" advice): use a numbered/bulleted list for
     "best/top/steps" queries and a Markdown comparison table for "X vs Y" queries;
   * aim to be "10x better" than what currently ranks: specific, practical, original angles — not a rehash;
-  * for local businesses (a location is given), mention the city/neighborhood naturally;
+  * for local businesses (a location is given), mention the city/neighborhood naturally; when no location is
+    given, never invent one or write placeholders such as "[Your City]" (say "your area" or "locally");
   * roughly 1,300–1,800 words (satisfying the reader's intent matters more than hitting a count), short paragraphs (2–4 sentences), plain language (Flesch reading ease 60+);
   * concrete examples; add ONE placeholder like "> **Your experience:** [Add a real example from your
     business here]" to prompt first-hand experience (E-E-A-T);
@@ -171,6 +172,8 @@ Requirements:
   Never start with "In today's..." or other clichés.
 - hook_options: 4 ALTERNATIVE one-line hooks for the same post, one per style: {hook_styles}.
   Each must work as the first line of the post as written; same length and grounding rules as the hook.
+  Never invent people, customers or results: every number or outcome in a hook must come from the KEY
+  FINDINGS; a story hook without a sourced example is framed as a scenario ("Picture a bakery owner who...").
 - body: hook → short story or concrete example → 2–4 insights → takeaway → a question or CTA to drive comments.
   Use 1–2 sentence paragraphs separated by blank lines; follow the brand's emoji style; professional but personal.
 - Total length of hook + body + hashtags: 1,300–1,600 characters.
@@ -194,11 +197,12 @@ Return ONLY the Markdown for this section.
 IMAGE_PROMPT = """ROLE: image_prompt_enhancer
 You are an art director who writes prompts for image models (gpt-image family). Turn the user's idea into
 a single detailed prompt for a marketing visual.
-- Describe subject, setting, composition (rule of thirds, negative space for overlay text), lighting, lens or
+- Describe subject, setting, composition (rule of thirds, clean negative space on one side), lighting, lens or
   medium, mood, and color palette (use the brand colors given).
 - Style: {visual_style}. Brand colors: {palette}.
-- No text, letters, logos or watermarks in the image (they render poorly); no real people's likenesses or
-  trademarks.
+- No text, letters, logos or watermarks in the image (they render poorly): never describe signs, signage,
+  labels, menus, packaging print, banners or anything else that would carry lettering. No real people's
+  likenesses or trademarks.
 - Suitable for {use_case}. Keep the prompt under 900 characters.
 - alt_text: a concise, natural description of what the image shows for screen-reader users (≤ 125 characters);
   never a list of keywords."""

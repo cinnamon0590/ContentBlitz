@@ -30,6 +30,7 @@ from src.integrations.openai_client import LLMService, ModerationClient
 from src.integrations.perplexity_client import PerplexityClient
 from src.integrations.serp_client import SearchChain, SerpAPIClient
 from src.integrations.tavily_client import TavilyClient
+from src.utils import content_optimization as co
 from src.utils.cache import TTLCache
 from src.utils.guardrails import enforce_citation_integrity
 from src.utils.observability import CostTracker, get_logger
@@ -198,14 +199,18 @@ def should_continue_tools(state: ContentState) -> str:
 # --------------------------------------------------------------------------------------
 # Output scrubbing (shared by every writer)
 # --------------------------------------------------------------------------------------
-def scrub_body(markdown: str, registry: SourceRegistry, valid_ids: set[int]) -> tuple[str, list[str]]:
+def scrub_body(markdown: str, registry: SourceRegistry, valid_ids: set[int],
+               location: str = "") -> tuple[str, list[str]]:
     """Apply output guardrails to generated Markdown.
 
+    * split merged citations ("[7, 8]" → "[7][8]") so each id is checked on its own,
+    * replace "[Your City]"-style placeholders with the brand location (or "your area"),
     * drop any Sources/References section the model wrote (ours is generated from the registry),
     * remove URLs that are not in the source registry (no invented links),
     * remove ``[n]`` citations that do not correspond to a real source.
     """
     notes: list[str] = []
+    markdown = co.fill_location_placeholders(co.normalize_citations(markdown), location)
     markdown = re.split(r"^#{1,3}\s*(Sources|References|Bibliography)\b.*$", markdown, maxsplit=1,
                         flags=re.M | re.I)[0].rstrip()
     markdown, removed = enforce_citation_integrity(markdown, registry.urls)

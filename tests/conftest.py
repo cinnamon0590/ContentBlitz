@@ -151,6 +151,7 @@ class FakeImageClient:
     def __init__(self, fail_models: set[str] | None = None):
         self.fail_models = fail_models or set()
         self.calls: list[str] = []
+        self.prompts: list[str] = []
 
     available = True
 
@@ -160,6 +161,7 @@ class FakeImageClient:
         from PIL import Image
 
         self.calls.append(model)
+        self.prompts.append(prompt)
         if model in self.fail_models:
             raise RuntimeError(f"{model} unavailable (simulated)")
         w, h = (int(x) for x in size.split("x"))

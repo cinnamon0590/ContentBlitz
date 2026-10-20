@@ -24,6 +24,11 @@ BLOG_TARGETS = {
 LINKEDIN_TARGETS = {"chars": (1300, 1600), "hashtags": (8, 12), "hook_max_chars": 210, "max_paragraph_chars": 280}
 
 CITATION_PATTERN = re.compile(r"\[(\d{1,3})\]")
+# Models sometimes merge citations ("[7, 8]", "[3; 5]", "[2-4]"); normalize_citations splits them into "[7][8]".
+_COMBINED_CITATION = re.compile(r"\[(\d{1,3}(?:\s*(?:[,;]|[-–])\s*\d{1,3})+)\](?!\()")
+# Bracketed stand-ins a model writes when it has no location ("[Your City]", "[neighborhood]").
+_LOCATION_PLACEHOLDER = re.compile(r"\[(?:your |the )?(?:city|town|neighbou?rhood|location|area|region|state)"
+                                   r"(?: name)?\]", re.I)
 # Percentages, money, large counts and multipliers. A bare year ("In 2026, ...") is a date, not a statistic.
 _STAT_PATTERN = re.compile(r"(\d+(?:\.\d+)?\s?%|\$\s?\d|\b\d{1,3}(?:,\d{3})+\b|\b\d+(?:\.\d+)?\s?(?:million|billion|percent|x)\b)",
                            re.I)
@@ -33,7 +38,30 @@ _EMOJI_PATTERN = re.compile("[\U0001F300-\U0001FAFF☀-➿]")
 # --------------------------------------------------------------------------------------
 # Text utilities
 # --------------------------------------------------------------------------------------
+def normalize_citations(text: str) -> str:
+    """Split merged citations into single ones: "[7, 8]" → "[7][8]", "[2-4]" → "[2][3][4]"."""
+
+    def split(match: re.Match) -> str:
+        ids: list[int] = []
+        for part in re.split(r"\s*[,;]\s*", match.group(1)):
+            lo, sep, hi = re.split(r"\s*([-–])\s*", part, maxsplit=1) + ([] if re.search(r"[-–]", part) else ["", ""])
+            first, last = int(lo), int(hi or lo)
+            if 0 < last - first <= 10:  # a short range: [2-4] → 2, 3, 4
+                ids += range(first, last + 1)
+            else:
+                ids += [first, last] if sep else [first]
+        return "".join(f"[{n}]" for n in dict.fromkeys(ids))
+
+    return _COMBINED_CITATION.sub(split, text)
+
+
+def fill_location_placeholders(text: str, location: str = "") -> str:
+    """Replace "[Your City]"-style placeholders with the brand's location, or "your area" when none is set."""
+    return _LOCATION_PLACEHOLDER.sub(location.strip() or "your area", text)
+
+
 def strip_markdown(markdown: str) -> str:
+    markdown = normalize_citations(markdown)
     text = re.sub(r"```.*?```", " ", markdown, flags=re.S)
     text = re.sub(r"!\[[^\]]*\]\([^)]*\)", " ", text)
     text = re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", text)
@@ -191,12 +219,12 @@ def first_paragraph_has_keyword(markdown: str, keyword: str, words: int = 100) -
 
 
 def citation_ids(text: str) -> set[int]:
-    return {int(n) for n in CITATION_PATTERN.findall(text)}
+    return {int(n) for n in CITATION_PATTERN.findall(normalize_citations(text))}
 
 
 def uncited_statistics(markdown: str) -> list[str]:
     """Sentences that contain a statistic (%, $, large number, year) but no ``[n]`` citation."""
-    body = body_without_sources(markdown)
+    body = normalize_citations(body_without_sources(markdown))
     flagged = []
     for line in body.splitlines():
         stripped = line.strip()

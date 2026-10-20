@@ -25,6 +25,9 @@ from src.utils.content_optimization import slugify
 from src.utils.guardrails import check_output
 from src.workflow.state_management import ContentState, ImageAsset, Provenance
 
+# Appended to every prompt: image models often add lettering to signs and packaging unless told plainly not to.
+NO_TEXT_SUFFIX = " Absolutely no text, letters, words, numbers, signs or logos anywhere in the image."
+
 
 class ImagePromptSpec(BaseModel):
     enhanced_prompt: str
@@ -33,7 +36,7 @@ class ImagePromptSpec(BaseModel):
 
 def fallback_enhancement(idea: str, brand) -> ImagePromptSpec:
     prompt = (f"{idea}. {brand.visual_style}. Composition with clear focal point and negative space on one side "
-              f"for headline overlay, soft natural lighting, shallow depth of field, color palette "
+              f"for a headline, soft natural lighting, shallow depth of field, color palette "
               f"{', '.join(brand.color_palette)}. High detail, professional marketing photograph. "
               "No text, no letters, no logos, no watermarks.")
     return ImagePromptSpec(enhanced_prompt=prompt[:900], alt_text=f"Marketing image: {idea}"[:125])
@@ -70,7 +73,7 @@ def make_image_generator(deps: AgentDeps):
                     "pending_formats": advance_pending(state, "image")}
 
         try:
-            result = deps.images.generate(spec.enhanced_prompt, title=topic, palette=brand.color_palette,
+            result = deps.images.generate(spec.enhanced_prompt.rstrip() + NO_TEXT_SUFFIX, title=topic, palette=brand.color_palette,
                                           brand=brand.name)
         except ImageGenerationError as exc:
             return {"warnings": add_warning(state, f"Image generation failed: {exc}"),

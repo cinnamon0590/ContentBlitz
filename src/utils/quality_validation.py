@@ -35,6 +35,8 @@ REPORT_WEIGHTS = {"structure": 0.35, "citations": 0.35, "readability": 0.15, "br
 GENERIC_HOOKS = ("in today's", "in this day and age", "in the ever-evolving", "are you ready", "have you ever wondered")
 # Weaker, overused openers: allowed, but a more specific hook should win.
 STOCK_OPENERS = ("want to", "did you know", "ever wonder", "here's why", "let's talk about", "imagine")
+_CLAIM_NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
+_MULTIPLIER_CLAIM = re.compile(r"\b(doubl|tripl|quadrupl|tenfold)\w*", re.I)
 
 
 def _band(value: float, lo: float, hi: float, tolerance: float) -> float:
@@ -90,9 +92,25 @@ def brand_voice_check(text: str, brand: BrandProfile) -> tuple[float, list[str],
                                           "emoji_per_100_words": style["emoji_per_100_words"]}
 
 
-def score_hook(hook: str) -> tuple[float, list[str]]:
-    """Score a LinkedIn opening line (0–100) with the issues to fix."""
+def unsupported_claims(text: str, grounding: str) -> list[str]:
+    """Numbers and "doubled/tripled" claims in ``text`` that never appear in ``grounding`` (years are ignored)."""
+    known = grounding.lower()
+    numbers = [n for n in _CLAIM_NUMBER.findall(text) if not re.fullmatch(r"(19|20)\d\d", n)]
+    missing = [n for n in numbers if n not in known]
+    missing += [m.group(0) for m in _MULTIPLIER_CLAIM.finditer(text) if m.group(1).lower() not in known]
+    return missing
+
+
+def score_hook(hook: str, grounding: str | None = None) -> tuple[float, list[str]]:
+    """Score a LinkedIn opening line (0–100) with the issues to fix.
+
+    With ``grounding`` (the research text), a hook that states a number or result the research doesn't
+    contain loses 30 points.
+    """
     score, issues = 100.0, []
+    if grounding is not None and (claims := unsupported_claims(hook, grounding)):
+        score -= 30
+        issues.append(f"Back up or drop the claim ({', '.join(claims)}): it isn't in the research.")
     if len(hook) > co.LINKEDIN_TARGETS["hook_max_chars"]:
         score -= 40
         issues.append("Shorten the opening line so the hook shows before 'see more'.")

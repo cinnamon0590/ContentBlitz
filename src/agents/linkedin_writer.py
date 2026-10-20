@@ -74,13 +74,17 @@ class LinkedInDraft(BaseModel):
 
 def clean_hook(text: str) -> str:
     """One plain line: no links, citation markers or hashtags."""
-    text, _ = strip_links(text.strip().split("\n", 1)[0])
+    text, _ = strip_links(co.normalize_citations(text.strip().split("\n", 1)[0]))
     text = re.sub(r"\s?\[\d{1,3}\]", "", text)
     return re.sub(r"(?<!\w)#[A-Za-z][A-Za-z0-9_]*", "", text).strip()
 
 
-def rank_hooks(hook: str, ideas: list[HookIdea]) -> list[HookOption]:
-    """Score the drafted hook and its alternatives; best first (ties keep the drafted hook first)."""
+def rank_hooks(hook: str, ideas: list[HookIdea], grounding: str | None = None) -> list[HookOption]:
+    """Score the drafted hook and its alternatives; best first (ties keep the drafted hook first).
+
+    ``grounding`` is the research the post was written from; a hook whose numbers or "doubled/tripled"
+    claims are not in it is marked down, so an invented result never leads the post.
+    """
     options: list[HookOption] = []
     seen: set[str] = set()
     for style, text in [("drafted", hook), *((i.style or "alternative", i.text) for i in ideas)]:
@@ -88,7 +92,7 @@ def rank_hooks(hook: str, ideas: list[HookIdea]) -> list[HookOption]:
         if not text or text.lower() in seen:
             continue
         seen.add(text.lower())
-        score, issues = score_hook(text)
+        score, issues = score_hook(text, grounding)
         options.append(HookOption(style=style, text=text, score=score, issues=issues))
     return sorted(options, key=lambda o: -o.score)
 
@@ -174,7 +178,9 @@ def compose_linkedin(deps: AgentDeps, state: ContentState, trend_payloads: list[
     body = draft.body.strip()
     if body.startswith(hook):
         body = body[len(hook):].lstrip()
-    options = rank_hooks(hook, draft.hook_options)
+    grounding = " ".join([research.summary, *(f.claim for f in research.key_findings), *(s.snippet for s in sources),
+                          body])
+    options = rank_hooks(hook, draft.hook_options, grounding)
     notes_hook: list[str] = []
     if options and clean_hook(hook) != options[0].text:
         drafted = next((o for o in options if o.style == "drafted"), None)
@@ -182,7 +188,7 @@ def compose_linkedin(deps: AgentDeps, state: ContentState, trend_payloads: list[
                           + (f" vs {drafted.score:.0f} for the drafted one)." if drafted else ")."))
     hook = options[0].text if options else clean_hook(hook)
     text = f"{hook}\n\n{body}" if body else hook
-    text, link_count = strip_links(text)
+    text, link_count = strip_links(co.fill_location_placeholders(co.normalize_citations(text), brand.location))
     text = re.sub(r"\s?\[\d{1,3}\]", "", text)
     hashtags = draft.hashtags or candidates
     if len(set(h.lower() for h in hashtags)) < 8:  # top up from trend candidates

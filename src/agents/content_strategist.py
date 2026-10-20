@@ -66,7 +66,7 @@ def make_content_strategist(deps: AgentDeps):
             warnings.append(f"Content Strategist model unavailable ({exc}); showing the research brief instead.")
             markdown = research.markdown.split("## Sources & Provenance")[0]
 
-        markdown, notes = scrub_body(markdown, registry, {s.id for s in sources})
+        markdown, notes = scrub_body(markdown, registry, {s.id for s in sources}, brand.location)
         if research.trend_signals and not re.search(r"^##\s*Trend Radar", markdown, re.M | re.I):
             radar = "\n".join(render_trend_radar(research.trend_signals, research.trend_source_id))
             head, sep, tail = markdown.partition("\n## Recommendations")
