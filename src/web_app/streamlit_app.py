@@ -31,7 +31,7 @@ def sidebar() -> None:
         st.markdown("### ⚡ ContentBlitz")
         st.caption("Multi-agent content marketing for small businesses")
         st.markdown(f"**Brand:** {brand().name}  \n**Conversation:** `{thread_id()}`")
-        if st.button("🆕 New conversation", use_container_width=True):
+        if st.button("🆕 New conversation", width="stretch"):
             new_thread()
             st.rerun()
         state = thread_state()

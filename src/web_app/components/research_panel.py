@@ -19,9 +19,9 @@ def _trend_radar(report: ResearchReport) -> None:
         cols = st.columns([5, 2, 2, 2])
         cols[0].markdown(f"**{signal.query}**")
         cols[1].markdown(f"`{signal.growth}`")
-        if cols[2].button("💼 LinkedIn", key=f"trend-li-{i}", use_container_width=True):
+        if cols[2].button("💼 LinkedIn", key=f"trend-li-{i}", width="stretch"):
             _draft(signal, "LinkedIn post")
-        if cols[3].button("📝 Blog", key=f"trend-blog-{i}", use_container_width=True):
+        if cols[3].button("📝 Blog", key=f"trend-blog-{i}", width="stretch"):
             _draft(signal, "SEO blog post")
     if top:
         st.markdown("**Most-searched related topics:** " + ", ".join(top))
@@ -75,5 +75,5 @@ def render_research_panel() -> None:
              "Publisher": s.get("publisher", ""), "Found via": s.get("provider", ""),
              "Used in": ", ".join(s.get("used_in", [])) or "—", "Retrieved": s.get("retrieved_at", "")[:16]}
             for s in sorted(sources, key=lambda x: x["id"])]
-    st.dataframe(rows, hide_index=True, use_container_width=True,
+    st.dataframe(rows, hide_index=True, width="stretch",
                  column_config={"URL": st.column_config.LinkColumn("URL", display_text="open ↗")})

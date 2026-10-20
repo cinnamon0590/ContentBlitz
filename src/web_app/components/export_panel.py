@@ -38,7 +38,7 @@ def render_export_panel() -> None:
                     col.button(FORMAT_LABELS[fmt], disabled=True, help=str(exc), key=f"x-{kind}-{fmt}")
                     continue
                 col.download_button(FORMAT_LABELS[fmt], payload, file_name=name, mime=mime,
-                                    key=f"dl-{kind}-{fmt}", use_container_width=True)
+                                    key=f"dl-{kind}-{fmt}", width="stretch")
     st.download_button("⬇️ Download everything (ZIP)", bundle_zip(artifacts, state.get("sources", [])),
                        file_name="contentblitz-export.zip", mime="application/zip", type="primary",
-                       use_container_width=True)
+                       width="stretch")

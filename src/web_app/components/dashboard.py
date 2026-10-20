@@ -87,7 +87,7 @@ def render_dashboard() -> None:
             st.caption(f"{len(st.session_state[f'meta-{kind}-{version}'])} characters · slug: /blog/{data['slug']}")
         edited = st.text_area("Edit content", value=data[field], height=520, key=f"edit-{kind}-{version}")
         c1, c2 = st.columns(2)
-        if c1.button("💾 Save edits & re-score", key=f"save-{kind}", use_container_width=True):
+        if c1.button("💾 Save edits & re-score", key=f"save-{kind}", width="stretch"):
             data[field] = edited
             if kind == "blog":
                 data["title"] = st.session_state[f"title-{kind}-{version}"]
@@ -96,7 +96,7 @@ def render_dashboard() -> None:
             app.update_artifact(thread_id(), kind, data, quality=report)
             st.toast(f"Saved. New score: {report.overall:.0f}/100")
             st.rerun()
-        with c2.popover("✨ Ask AI to refine", use_container_width=True):
+        with c2.popover("✨ Ask AI to refine", width="stretch"):
             instructions = st.text_input("What should change?", key=f"refine-{kind}",
                                          placeholder="e.g. make it more casual and add a local example")
             if st.button("Refine", key=f"refine-go-{kind}") and instructions:
@@ -128,7 +128,7 @@ def render_gallery() -> None:
         with st.container(border=True):
             cols = st.columns([3, 2])
             cols[0].image(image["path"], caption=image.get("alt_text", ""),
-                          alt=image.get("alt_text") or "Generated marketing image", use_container_width=True)
+                          alt=image.get("alt_text") or "Generated marketing image", width="stretch")
             with cols[1]:
                 st.markdown(f"**Provider:** `{image['provider']}`  \n**Size:** {image['width']}×{image['height']}")
                 st.markdown(f"**Your idea:** {image['original_prompt']}")
